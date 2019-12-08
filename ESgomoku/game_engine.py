@@ -15,6 +15,7 @@ class const():
     white_chess = 'O'
     empty_place = '-'
     space = ' '
+    row_col = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']
 
 
 class Board(object):
@@ -154,10 +155,10 @@ class Game(object):
         print("Player", player2, "with ○".rjust(3))
         print('')
         for x in range(width):
-            print("{}{}{}".format(const.space,const.space,x), end='')
+            print("{}{}{}".format(const.space,const.space,const.row_col[x]), end='')
         print('\r\n')
         for i in range(height - 1, -1, -1):
-            print("{}".format(i), end='')
+            print("{}".format(const.row_col[i]), end='')
             for j in range(width):
                 loc = i * width + j
                 p = board.states.get(loc, -1)
