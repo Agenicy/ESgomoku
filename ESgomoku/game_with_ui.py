@@ -45,9 +45,8 @@ class DataPlayer(object):
     def get_action(self, board):
         try:
             next = self.ana.Shot()
-            input(next)
             if(next[0] == 0):
-                input()
+                input( "winner is {}".format( {0:"black",1:"white"}.get(next[1]) ) )
             elif(next[0] == -1):
                 input('No More Steps.')
             else:

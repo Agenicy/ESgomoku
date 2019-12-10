@@ -8,6 +8,7 @@ class const():
     default_n_in_row = 5
 
     #nn input
+    #black, white, last, who_first
     num_of_input_array = 4
 
     #ui
@@ -16,6 +17,7 @@ class const():
     empty_place = '-'
     space = ' '
     row_col = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']
+
 
 
 class Board(object):
@@ -66,10 +68,10 @@ class Board(object):
 
     def current_state(self):
         """return the board state from the perspective of the current player.
-        state shape: 4*width*height
+        state shape: ( const.num_of_input_array )*width*height
         """
 
-        square_state = np.zeros((const.num_of_input_array, self.width, self.height))
+        square_state = np.zeros(const.num_of_input_array, self.width, self.height)
         if self.states:
             moves, players = np.array(list(zip(*self.states.items())))
             move_curr = moves[players == self.current_player]
