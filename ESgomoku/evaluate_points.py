@@ -25,7 +25,8 @@ class Judge(object):
     pattern_shift = [
          # white(self)          black(enemy)
         [[0,0,0,-1, 1 ,1,1,1,-1],[0,0,0,-1, 0 ,0,0,0,-1]], # 活四
-        [[0,0,0,-1, 1 ,1,1,-1,0],[0,0,0,-1, 0 ,0,0,-1,0]], # 活三
+        [[0,0,-1,-1, 1 ,1,1,-1,-1],[0,0,0,-1, 0 ,0,0,-1,0]], # 活三
+        #[[0,0,-1,-1, 1 ,1,1,-1,-1],[0,0,1,-1, 0 ,0,0,-1,1]], # 假活三(被夏止防守)
         [[0,0,-1,-1, 1 ,1,-1,-1,0],[0,0,-1,-1, 0 ,0,-1,-1,0]] # 活二
         ]
     # 圖形，包含移動前共有幾個
@@ -34,16 +35,33 @@ class Judge(object):
     pattern_esti = [4,3,2]
     # 圖形的分數
     pattern_score = [100,50,10]
-    # 具對稱性的圖形
+    # 無法只靠平移檢測的圖形
     pattern_mirror = [
+        [[0,0,0,-1, 1 ,1,1,-1,1],[0,0,0,0, 0 ,0,0,-1,0]], # 跳四(長邊)
+        [[0,0,0,-1, 1 ,-1,1,1,1],[0,0,0,0, 0 ,-1,0,0,0]], # 跳四(短邊)
+        [[0,0,0,-1, 1 ,1,1,1,-1],[0,0,0,-1, 0 ,0,0,0,1]], # 死四
+        [[0,0,-1,-1, 1 ,1,-1,1,-1],[0,0,0,-1, 0 ,0,-1,0,-1]], # 跳三(長邊)
+        [[0,0,-1,-1, 1 ,-1,1,1,-1],[0,0,0,-1, 0 ,-1,0,0,-1]], # 跳三(短邊)
+        [[0,0,-1,-1, 1 ,1,-1,1,-1],[0,0,0,1, 0 ,0,-1,0,-1]], # 跳三(長邊死, 長邊)
+        [[0,0,-1,-1, 1 ,1,-1,1,-1],[0,0,0,-1, 0 ,0,-1,0,1]], # 跳三(短邊死, 長邊)
+        [[0,0,-1,-1, 1 ,-1,1,1,-1],[0,0,0,-1, 0 ,-1,0,0,1]], # 跳三(長邊死, 短邊)
+        [[0,0,-1,-1, 1 ,-1,1,1,-1],[0,0,0,1, 0 ,-1,0,0,-1]], # 跳三(短邊死, 短邊)
+        [[0,0,-1,-1, 1 ,1,1,-1,0],[0,0,0,-1, 0 ,0,0,1,0]], # 死三
+        [[0,0,0,-1, 1 ,-1,1,-1,0],[0,0,0,-1, 0 ,-1,0,-1,0]], # 跳二
         [[0,0,-1,-1, 1 ,1,-1,-1,0],[0,0,-1,-1, 0 ,0,-1,1,0]] # 比較弱的活二(單面開)
     ]
     # 對稱圖形，包含移動前共有幾個
-    pattern_mirror_total_appear_times = [2]
+    pattern_mirror_total_appear_times = [3,1,4 ,2,1, 2,2,1,1, 3, 1,2]
     # 對稱圖形的分數
-    pattern_mirror_score = [5]
+    pattern_mirror_score = [60,60,30, 50,50, 45,45,45,45, 20, 5,5]
     # 滿足對稱圖形所需的激活分數
-    pattern_mirror_esti = [3]
+    pattern_mirror_esti = [4,4,5, 3,3, 4,4,4,4, 4, 2,3]
+
+    # 每個圖形對應的名稱，用於debug
+    pattern_name = ['活四','活三','活二',
+    '跳四(長邊)','跳四(短邊)','死四',
+    '跳三(長邊)','跳三(短邊)','跳三(長邊死, 長邊)','跳三(短邊死, 長邊)','跳三(長邊死, 短邊)','跳三(短邊死, 短邊)',
+    '死三','跳二','弱活二']
 
     # 最終用於平坦化的矩陣(一開始輸入數量，等得知最終大小後才開始建造list)
     flattern = 0
@@ -51,6 +69,7 @@ class Judge(object):
 
     def __init__(self):
         """generate judge_array and judge_weight by analyzing the lists named pattern and pattern_kind"""
+        # 非對稱圖形
         for index, x in enumerate(self.pattern_kind):
             for i in range(0,x):
                 # roll the list
@@ -61,6 +80,7 @@ class Judge(object):
                 self.judge_weight.append(1/self.pattern_esti[index])
                 #註冊平坦化
                 self.flattern += 1
+        # 對稱圖形
         for index, x in enumerate(self.pattern_mirror_total_appear_times):
             for i in range(0,x):
                 # reflect the list in "mirror"
@@ -79,8 +99,8 @@ class Judge(object):
                 self.judge_array.append([lst1, lst2])
                 # 圖形的分數
                 self.judge_score.append(self.pattern_mirror_score[index])
-                #圖形的激活分數 = 圖形可以平移幾次
-                self.judge_weight.append(1/self.pattern_mirror_total_appear_times[index])
+                #圖形的激活分數
+                self.judge_weight.append(1/self.pattern_mirror_esti[index])
                 #註冊平坦化
                 self.flattern += 1
 
@@ -130,6 +150,8 @@ class Judge(object):
             dir2.append([board[loc-x][0][loc+x], board[loc-x][1][loc+x]])
             dir3.append([board[loc][0][loc+x], board[loc][1][loc+x]])
             dir4.append([board[loc+x][0][loc], board[loc+x][1][loc]])
+        
+        # 四個方向各算一次
         for i in range(0,4):
             target[i] = np.array(target[i])
             # 用矩陣判斷
@@ -143,20 +165,30 @@ class Judge(object):
             ret = np.maximum(np.floor(ret),0)
             # 平坦化
             ret = np.dot(ret, self.flattern)
+            #print("flattern:{}".format(ret))
 
             if total_pattern == []:
                 total_pattern = ret
             else:
                 total_pattern += ret
         return total_pattern
-            
-judge = Judge()
-print(judge.test([ [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                   [[0,0,0,0,1,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                   [[0,0,1,0,1,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                   [[0,0,0,0,1,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                   [[0,0,0,1,1,1,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                   [[0,0,0,0,0,1,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                   [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                   [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,1,0]],
-                   [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]] , loc = 4))
+
+# 測試輸入
+if __name__ == '__main__':       
+    judge = Judge()
+    detect = judge.test([ 
+                        [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
+                        [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
+                        [[0,0,0,0,0,0,0,0,0],[0,0,1,0,0,0,0,0,0]],
+                        [[0,0,0,1,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
+                        [[0,0,0,0,1,0,1,1,0],[0,0,0,1,0,0,0,0,0]],
+                        [[0,0,0,1,0,1,0,0,0],[0,0,0,0,0,0,0,0,0]],
+                        [[0,0,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
+                        [[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,0,0]],
+                        [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]] , loc = 4)
+
+    #print(judge.pattern_name)
+    #print(detect)
+    for i in range(0,len(judge.pattern_name)):
+        if detect[i] == 1:
+            print("{}:{}".format(judge.pattern_name[i],(int)(detect[i])))
