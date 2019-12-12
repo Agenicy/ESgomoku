@@ -20,6 +20,9 @@ class Judge(object):
     judge_array = []
     judge_weight = []
     judge_score = []
+    
+    # 最終用於平坦化的矩陣(一開始輸入數量，等得知最終大小後才開始建造list)
+    flattern = 0
 
     # 可以平移的圖形
     pattern_shift = [
@@ -65,68 +68,85 @@ class Judge(object):
     '跳三(長邊)','跳三(短邊)','跳三(長邊死, 長邊)','跳三(短邊死, 長邊)','跳三(長邊死, 短邊)','跳三(短邊死, 短邊)',
     '死三','跳二','弱活二','死二']
 
-    # 最終用於平坦化的矩陣(一開始輸入數量，等得知最終大小後才開始建造list)
-    flattern = 0
+    # flattern使用的計數器
     flag = 0
 
     def __init__(self):
         """generate judge_array and judge_weight by analyzing the lists named pattern and pattern_kind"""
-        # 非對稱圖形
-        for index, x in enumerate(self.pattern_kind):
-            for i in range(0,x):
-                # roll the list
-                self.judge_array.append([ self.pattern_shift[index][0][i:] + self.pattern_shift[index][0][:i], self.pattern_shift[index][1][i:] + self.pattern_shift[index][1][:i]])
-                # 圖形的分數
-                self.judge_score.append(self.pattern_score[index])
-                #圖形的激活分數
-                self.judge_weight.append(1/self.pattern_esti[index])
-                #註冊平坦化
-                self.flattern += 1
-        # 對稱圖形
-        for index, x in enumerate(self.pattern_mirror_total_appear_times):
-            for i in range(0,x):
-                # reflect the list in "mirror"
-                self.judge_array.append([self.pattern_mirror[index][0][i:] + self.pattern_mirror[index][0][:i], self.pattern_mirror[index][1][i:] + self.pattern_mirror[index][1][:i]])
+        try:
+            self.judge_array = np.load('judge_array.npy')
+            self.judge_score = np.load('judge_score.npy')
+            self.judge_weight = np.load('judge_weight.npy')
+            self.flattern = np.load('judge_flattern.npy')
+            print('Evaluate matrix load from files.')
+        except FileNotFoundError:
+            # 如果沒有檔案 -> 生成檔案
 
-                self.judge_score.append(self.pattern_mirror_score[index])
-                #圖形的激活分數
-                self.judge_weight.append(1/self.pattern_mirror_esti[index])
-                #註冊平坦化
-                self.flattern += 1
+            # 初始化
+            self.judge_array = []
+            self.judge_weight = []
+            self.judge_score = []
+            self.flattern = 0
 
-                # 反轉圖形
-                lst1, lst2 = self.pattern_mirror[index][0][i:] + self.pattern_mirror[index][0][:i], self.pattern_mirror[index][1][i:] + self.pattern_mirror[index][1][:i]
-                lst1.reverse()
-                lst2.reverse()
-                self.judge_array.append([lst1, lst2])
-                # 圖形的分數
-                self.judge_score.append(self.pattern_mirror_score[index])
-                #圖形的激活分數
-                self.judge_weight.append(1/self.pattern_mirror_esti[index])
-                #註冊平坦化
-                self.flattern += 1
+            # 非對稱圖形
+            for index, x in enumerate(self.pattern_kind):
+                for i in range(0,x):
+                    # roll the list
+                    self.judge_array.append([ self.pattern_shift[index][0][i:] + self.pattern_shift[index][0][:i], self.pattern_shift[index][1][i:] + self.pattern_shift[index][1][:i]])
+                    # 圖形的分數
+                    self.judge_score.append(self.pattern_score[index])
+                    #圖形的激活分數
+                    self.judge_weight.append(1/self.pattern_esti[index])
+                    #註冊平坦化
+                    self.flattern += 1
+            # 對稱圖形
+            for index, x in enumerate(self.pattern_mirror_total_appear_times):
+                for i in range(0,x):
+                    # reflect the list in "mirror"
+                    self.judge_array.append([self.pattern_mirror[index][0][i:] + self.pattern_mirror[index][0][:i], self.pattern_mirror[index][1][i:] + self.pattern_mirror[index][1][:i]])
 
-        # 建立平坦化矩陣
-        self.flattern = np.zeros((self.flattern,len(self.pattern_kind)+len(self.pattern_mirror_total_appear_times)))
-        for index,times in enumerate(self.pattern_kind):
+                    self.judge_score.append(self.pattern_mirror_score[index])
+                    #圖形的激活分數
+                    self.judge_weight.append(1/self.pattern_mirror_esti[index])
+                    #註冊平坦化
+                    self.flattern += 1
+
+                    # 反轉圖形
+                    lst1, lst2 = self.pattern_mirror[index][0][i:] + self.pattern_mirror[index][0][:i], self.pattern_mirror[index][1][i:] + self.pattern_mirror[index][1][:i]
+                    lst1.reverse()
+                    lst2.reverse()
+                    self.judge_array.append([lst1, lst2])
+                    # 圖形的分數
+                    self.judge_score.append(self.pattern_mirror_score[index])
+                    #圖形的激活分數
+                    self.judge_weight.append(1/self.pattern_mirror_esti[index])
+                    #註冊平坦化
+                    self.flattern += 1
+
+            # 建立平坦化矩陣
+            self.flattern = np.zeros((self.flattern,len(self.pattern_kind)+len(self.pattern_mirror_total_appear_times)))
+            for index,times in enumerate(self.pattern_kind):
+                
+                for i in range(0,times):
+                    self.flattern[self.flag][index] = 1
+                    self.flag += 1
             
-            for i in range(0,times):
-                self.flattern[self.flag][index] = 1
-                self.flag += 1
-        
-        for index,times in enumerate(self.pattern_mirror_total_appear_times):
-            for i in range(0, times):
-                # 因為有鏡射所以做兩次
-                self.flattern[self.flag][len(self.pattern_kind) + index] = 1
-                self.flag += 1
-                self.flattern[self.flag][len(self.pattern_kind) + index] = 1
-                self.flag += 1
-        # list轉array
-        self.judge_array = np.array(self.judge_array)
-        # 加權函數轉成對角矩陣
-        self.judge_weight = np.diag(np.array(self.judge_weight))
-
-        print("Evaluate matrix done.")
+            for index,times in enumerate(self.pattern_mirror_total_appear_times):
+                for i in range(0, times):
+                    # 因為有鏡射所以做兩次
+                    self.flattern[self.flag][len(self.pattern_kind) + index] = 1
+                    self.flag += 1
+                    self.flattern[self.flag][len(self.pattern_kind) + index] = 1
+                    self.flag += 1
+            # list轉array
+            self.judge_array = np.array(self.judge_array)
+            # 加權函數轉成對角矩陣
+            self.judge_weight = np.diag(np.array(self.judge_weight))
+            np.save('judge_array.npy',self.judge_array)
+            np.save('judge_score.npy',self.judge_score)
+            np.save('judge_weight.npy',self.judge_weight)
+            np.save('judge_flattern.npy',self.flattern)
+            print("Evaluate matrix done.")
 
     def force_nined(self, board, loc):
         """Input a location, return a 9*1 list. If the list ins't big enough(out of board), let white fill 0 and black fill 1  """
@@ -163,7 +183,7 @@ class Judge(object):
         board[loc[0]][0][loc[1]] = 1
         # fill testing board with spec value
         target = self.force_nined(board = board, loc = loc)
-        total_pattern = []
+        total_pattern = None
         
         # 四個方向各算一次
         for i in range(0,4):
@@ -181,7 +201,7 @@ class Judge(object):
             ret = np.dot(ret, self.flattern)
             #print("flattern:{}".format(ret))
 
-            if total_pattern == []:
+            if total_pattern is None:
                 total_pattern = ret
             else:
                 total_pattern += ret
@@ -201,8 +221,6 @@ if __name__ == '__main__':
                         [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
                         [[1,1,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]] , loc = [3, 5])
 
-    #print(judge.pattern_name)
-    #print(detect)
     for i in range(0,len(judge.pattern_name)):
         if detect[i] >= 1:
             print("{}:{}".format(judge.pattern_name[i],(int)(detect[i])))
