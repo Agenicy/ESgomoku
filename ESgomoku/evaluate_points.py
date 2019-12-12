@@ -39,6 +39,7 @@ class Judge(object):
     pattern_mirror = [
         [[0,0,0,-1, 1 ,1,1,-1,1],[0,0,0,0, 0 ,0,0,-1,0]], # 跳四(長邊)
         [[0,0,0,-1, 1 ,-1,1,1,1],[0,0,0,0, 0 ,-1,0,0,0]], # 跳四(短邊)
+        [[0,0,0,-1, 1 ,1,-1,1,1],[0,0,0,0, 0 ,-1,0,0,0]], # 跳四(中間)
         [[0,0,0,-1, 1 ,1,1,1,-1],[0,0,0,-1, 0 ,0,0,0,1]], # 死四
         [[0,0,-1,-1, 1 ,1,-1,1,-1],[0,0,0,-1, 0 ,0,-1,0,-1]], # 跳三(長邊)
         [[0,0,-1,-1, 1 ,-1,1,1,-1],[0,0,0,-1, 0 ,-1,0,0,-1]], # 跳三(短邊)
@@ -48,20 +49,21 @@ class Judge(object):
         [[0,0,-1,-1, 1 ,-1,1,1,-1],[0,0,0,1, 0 ,-1,0,0,-1]], # 跳三(短邊死, 短邊)
         [[0,0,-1,-1, 1 ,1,1,-1,0],[0,0,0,-1, 0 ,0,0,1,0]], # 死三
         [[0,0,0,-1, 1 ,-1,1,-1,0],[0,0,0,-1, 0 ,-1,0,-1,0]], # 跳二
-        [[0,0,-1,-1, 1 ,1,-1,-1,0],[0,0,-1,-1, 0 ,0,-1,1,0]] # 比較弱的活二(單面開)
+        [[0,0,-1,-1, 1 ,1,-1,-1,0],[0,0,-1,-1, 0 ,0,-1,1,0]], # 比較弱的活二(單面開)
+        [[0,0,-1,-1, 1 ,1,-1,-1,0],[0,-1,-1,-1, 0 ,0,1,0,0]] # 死二
     ]
     # 對稱圖形，包含移動前共有幾個
-    pattern_mirror_total_appear_times = [3,1,4 ,2,1, 2,2,1,1, 3, 1,2]
+    pattern_mirror_total_appear_times = [3,1,2,4 ,2,1, 2,2,1,1, 3, 1,2,2]
     # 對稱圖形的分數
-    pattern_mirror_score = [60,60,30, 50,50, 45,45,45,45, 20, 5,5]
+    pattern_mirror_score = [60,60,30,30, 50,50, 45,45,45,45, 20, 5,5,1]
     # 滿足對稱圖形所需的激活分數
-    pattern_mirror_esti = [4,4,5, 3,3, 4,4,4,4, 4, 2,3]
+    pattern_mirror_esti = [4,4,4,5, 3,3, 4,4,4,4, 4, 2,3,3]
 
     # 每個圖形對應的名稱，用於debug
     pattern_name = ['活四','活三','活二',
-    '跳四(長邊)','跳四(短邊)','死四',
+    '跳四(長邊)','跳四(短邊)','跳四(中間)','死四',
     '跳三(長邊)','跳三(短邊)','跳三(長邊死, 長邊)','跳三(短邊死, 長邊)','跳三(長邊死, 短邊)','跳三(短邊死, 短邊)',
-    '死三','跳二','弱活二']
+    '死三','跳二','弱活二','死二']
 
     # 最終用於平坦化的矩陣(一開始輸入數量，等得知最終大小後才開始建造list)
     flattern = 0
@@ -126,30 +128,42 @@ class Judge(object):
 
         print("Evaluate matrix done.")
 
-    #unused
-    def Eva_Range(self, location = (0, 0)):
-        """Input a location, return a 5*5(or, at edge of the board, return 3*3) list.  """
-        x_min, x_max = max(0, location[0] - 2 ), min(const.default_width, location[0] + 2 )
-        y_min, y_max = max(0, location[1] - 2 ), min(const.default_height, location[1] + 2 )
-        return Evaluater.board[x_min:x_max, y_min:y_max]
+    def force_nined(self, board, loc):
+        """Input a location, return a 9*1 list. If the list ins't big enough(out of board), let white fill 0 and black fill 1  """
+        target = [[],[],[],[]]
+        for x in range(-4,5):
+            if loc[0]+x in range(0,len(board)) and loc[1]+x in range(0,len(board)):
+                target[0].append([board[loc[0]+x][0][loc[1]+x], board[loc[0]+x][1][loc[1]+x]])
+            else:
+                 target[0].append([0,1])
+            if loc[0]-x in range(0,len(board)) and loc[1]+x in range(0,len(board)):
+                target[1].append([board[loc[0]-x][0][loc[1]+x], board[loc[0]-x][1][loc[1]+x]])
+            else:
+                 target[1].append([0,1])
+            if loc[0] in range(0,len(board)) and loc[1]+x in range(0,len(board)):
+                target[2].append([board[loc[0]][0][loc[1]+x], board[loc[0]][1][loc[1]+x]])
+            else:
+                 target[2].append([0,1])
+            if loc[0]+x in range(0,len(board)) and loc[1] in range(0,len(board)):
+                target[3].append([board[loc[0]+x][0][loc[1]], board[loc[0]+x][1][loc[1]]])
+            else:
+                 target[3].append([0,1])
+        return target
 
     #unused
-    def has_neighbor(self, location = (0, 0)):
+    def has_neighbor(self, board, loc):
         """Return the location is isolated(5*5 no other chesses) or not."""
-        for each_point in self.Eva_Range(location):
-            if not each_point == 0:
-                return True
-        return False
 
     def test(self, board, loc):
-        dir1,dir2,dir3,dir4 = [], [], [], []
-        target = [dir1,dir2,dir3,dir4]
+        # loc = [x, y], with [1, 1] at the left-down side. Transverse loc to list location
+        loc[0], loc[1] = loc[1], loc[0]
+        loc[0] = len(board) - loc[0]
+        loc[1] -= 1
+        # put testing chess
+        board[loc[0]][0][loc[1]] = 1
+        # fill testing board with spec value
+        target = self.force_nined(board = board, loc = loc)
         total_pattern = []
-        for x in range(-4,5):
-            dir1.append([board[loc+x][0][loc+x], board[loc+x][1][loc+x]])
-            dir2.append([board[loc-x][0][loc+x], board[loc-x][1][loc+x]])
-            dir3.append([board[loc][0][loc+x], board[loc][1][loc+x]])
-            dir4.append([board[loc+x][0][loc], board[loc+x][1][loc]])
         
         # 四個方向各算一次
         for i in range(0,4):
@@ -181,14 +195,14 @@ if __name__ == '__main__':
                         [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
                         [[0,0,0,0,0,0,0,0,0],[0,0,1,0,0,0,0,0,0]],
                         [[0,0,0,1,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                        [[0,0,0,0,1,0,1,1,0],[0,0,0,1,0,0,0,0,0]],
+                        [[0,0,0,1,1,0,1,1,0],[0,0,0,0,0,0,0,0,0]],
                         [[0,0,0,1,0,1,0,0,0],[0,0,0,0,0,0,0,0,0]],
                         [[0,0,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                        [[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,0,0]],
-                        [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]] , loc = 4)
+                        [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
+                        [[1,1,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]] , loc = [3, 5])
 
     #print(judge.pattern_name)
     #print(detect)
     for i in range(0,len(judge.pattern_name)):
-        if detect[i] == 1:
+        if detect[i] >= 1:
             print("{}:{}".format(judge.pattern_name[i],(int)(detect[i])))
