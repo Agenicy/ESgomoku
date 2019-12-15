@@ -153,8 +153,8 @@ class Game(object):
         width = board.width
         height = board.height
 
-        print("Player", player1, "with ●".rjust(3))
-        print("Player", player2, "with ○".rjust(3))
+        print("Player", player1, "with X".rjust(3))
+        print("Player", player2, "with O".rjust(3))
         print('')
         for x in range(width):
             print("{}{}{}".format(const.space,const.space,const.row_col[x]), end='')

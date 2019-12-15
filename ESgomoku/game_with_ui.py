@@ -72,7 +72,7 @@ def run():
         game = Game(board)
 
         # set start_player=0 for human first
-        game.start_play(DataPlayer(), DataPlayer(), start_player=1, is_shown=1)
+        game.start_play(Human(), Human(), start_player=1, is_shown=1)
     except KeyboardInterrupt:
         print('\n\rquit')
 
