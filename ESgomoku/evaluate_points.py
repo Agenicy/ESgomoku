@@ -8,13 +8,6 @@ from keras.layers import Conv2D
 
 from game_engine import const
 
-class Evaluater(object):
-    """Evaluate each point of the Board"""
-    # Board with black = 1 , white = -1
-    board = []
-    def __init__(self, board):
-        self.board = board
-
 class Judge(object):
     #judge_array dot plate = whether there is a shape or not
     judge_array = []
@@ -174,7 +167,8 @@ class Judge(object):
     def has_neighbor(self, board, loc):
         """Return the location is isolated(5*5 no other chesses) or not."""
 
-    def test(self, board, loc):
+    def test(self, board,player_num, loc):
+        
         # loc = [x, y], with [1, 1] at the left-down side. Transverse loc to list location
         loc[0], loc[1] = loc[1], loc[0]
         loc[0] = len(board) - loc[0]
@@ -219,7 +213,7 @@ if __name__ == '__main__':
                         [[0,0,0,1,0,1,0,0,0],[0,0,0,0,0,0,0,0,0]],
                         [[0,0,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
                         [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                        [[1,1,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]] , loc = [3, 5])
+                        [[1,1,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]] ,0 , loc = [3, 5])
 
     for i in range(0,len(judge.pattern_name)):
         if detect[i] >= 1:

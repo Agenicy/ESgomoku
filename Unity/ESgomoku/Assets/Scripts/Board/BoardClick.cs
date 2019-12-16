@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 public class BoardClick : MonoBehaviour
 {
-	[SerializeField,Header("棋盤")]
+	[SerializeField, Header("棋盤")]
 	GameObject board;
 	[SerializeField]
 	GameObject black_chess, white_chess;
@@ -18,6 +18,7 @@ public class BoardClick : MonoBehaviour
 	GameObject Socket_Client;
 
 	bool isBlack = true;
+	bool[,] has_chess;
 
 	////////////////////////////////////////////
 
@@ -36,7 +37,7 @@ public class BoardClick : MonoBehaviour
 	// Start is called before the first frame update
 	void Start()
 	{
-
+		has_chess = new bool[13, 13];
 	}
 
 	// Update is called once per frame
@@ -51,17 +52,22 @@ public class BoardClick : MonoBehaviour
 		{
 			Debug.Log("Catch Event: BoardClick");
 			Click();
-			ScreenClickedEventThrower.GetComponent<ScreenClickedEvent>().mode = "pl_round";//改成已經輸入
 		}
 	}
-	
+
 	/////////////////////////private/////////////////////////////////
 	void Click()
 	{
 		Vector2 pos = new Vector2((int)((Input.mousePosition.x - (board.transform.position.x - board.GetComponent<RectTransform>().rect.width / 2)) / unit_chess.GetComponent<RectTransform>().rect.width), (int)((Input.mousePosition.y - (board.transform.position.y - board.GetComponent<RectTransform>().rect.height / 2)) / unit_chess.GetComponent<RectTransform>().rect.width));
-		Debug.Log($"Player Click : {pos}");
-		Socket_Client.GetComponent<Socket_Client>().pl_move(pos);
-		SummonChess(pos);
+		if (0 <= pos.x && pos.x <= 13 && 0 <= pos.y && pos.y <= 13 && !has_chess[(int)pos.x, (int)pos.y])
+		{
+			ScreenClickedEventThrower.GetComponent<ScreenClickedEvent>().mode = "ai_round";//改成已經輸入
+
+			Debug.Log($"Player Click : {pos}");
+			has_chess[(int)pos.x, (int)pos.y] = true;
+			Socket_Client.GetComponent<Socket_Client>().pl_move(pos);
+			SummonChess(pos);
+		}
 	}
 
 	void SummonChess(Vector2 loc)
@@ -77,6 +83,6 @@ public class BoardClick : MonoBehaviour
 		}
 		isBlack = !isBlack;
 		chess.transform.SetParent(board.transform);
-		chess.GetComponent<RectTransform>().localPosition = loc * unit_chess.GetComponent<RectTransform>().rect.width - board.GetComponent<RectTransform>().rect.size/2 + unit_chess.GetComponent<RectTransform>().rect.size / 2;
+		chess.GetComponent<RectTransform>().localPosition = loc * unit_chess.GetComponent<RectTransform>().rect.width - board.GetComponent<RectTransform>().rect.size / 2 + unit_chess.GetComponent<RectTransform>().rect.size / 2;
 	}
 }

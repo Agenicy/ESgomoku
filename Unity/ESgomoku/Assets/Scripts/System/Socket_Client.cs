@@ -18,20 +18,29 @@ public class Socket_Client : MonoBehaviour
 		// 声明 connect 事件和 server_sent 事件的回调函数
 		sio.On("connect", OnConnect);
 		sio.On("ai_move", ReceiveStep);
+		sio.On("pl_turn", ReceiveCanMove);
 		sio.On("winner", ReceiveWinner);
 	}
-	void OnConnect(SocketIOEvent obj)
+	void OnConnect(SocketIOEvent obj)//連接成功
 	{
 		Debug.Log("Connection Open");
 	}
 
-	void ReceiveStep(SocketIOEvent obj)
+	void ReceiveStep(SocketIOEvent obj)//收到電腦落子位置
 	{
 		JSONObject jsonObject = obj.data;
 		string rcv = jsonObject.GetField("loc").str;
 		Debug.Log("ai_move : " + rcv);
 	}
-	void ReceiveWinner(SocketIOEvent obj)
+
+	void ReceiveCanMove(SocketIOEvent obj)//伺服器處理完畢，允許玩家落子
+	{
+		ScreenClickedEventThrower.GetComponent<ScreenClickedEvent>().mode = "pl_round";//改成允許輸入
+
+		Debug.Log("your turn ...");
+	}
+
+	void ReceiveWinner(SocketIOEvent obj)//收到勝者，遊戲結束
 	{
 		JSONObject jsonObject = obj.data;
 		string rcv = jsonObject.GetField("winner").str;

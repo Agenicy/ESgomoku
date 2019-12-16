@@ -1,13 +1,29 @@
 import socketio
 import eventlet
 eventlet.monkey_patch()
+
 import eventlet.wsgi
 from flask import Flask
 import threading, time
 
 from game_engine import *
 
+# 單步評估器
+from evaluate_points import Judge
+judge = Judge()
+chess_graph = [ [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
+                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
+                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
+                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
+                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
+                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
+                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
+                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
+                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]] ]
 
+now_pl, next_pl = 0, 1
+
+# server
 sio = socketio.Server()
 app = Flask(__name__)
 
@@ -17,37 +33,19 @@ t = []
 # client input queue
 loc = []
 
-"""
-# "连接建立的回调函数"
-@sio.on('connect')
-def on_connect(sid, environ):    
-    print("connect ", sid)
-    send_to_client(101)
-# "接收 Client 事件 (client_sent) 的回调函数"
-@sio.on('client_sent')
-def on_revieve(sid, data):    
-    if data:
-        print ('From Client : %s' % data['nbr'])
-        time.sleep(3)
-        send_to_client(int(data['nbr']) + 1)
-    else:
-        print ('Recieved Empty Data!')
-# "向 Client 发送数字"
-def send_to_client(_nbr):    
-    sio.emit(
-        'server_sent', 
-        data = {'nbr':_nbr.__str__()}, 
-        skip_sid=True)      
-"""
+# main game
+game = None
+
+# 連接成功
 @sio.on('connect')
 def on_connect(sid, environ):   
     global t 
     print("connect ", sid)
-    send_step()
     if len(t) == 0:
         t.append(threading.Thread(target=run))
         t[0].start()
-    
+
+# 電腦落子
 def send_step(): 
     print('send_step')   
     sio.emit(
@@ -56,6 +54,7 @@ def send_step():
         skip_sid=True) 
     eventlet.sleep(0)
 
+# 冠軍出爐
 def has_winner(winner): 
     print('has winner!')
     sio.emit(
@@ -64,6 +63,7 @@ def has_winner(winner):
         skip_sid=True) 
     eventlet.sleep(0)
 
+# 玩家落子
 @sio.on('pl_move')
 def pl_move(sid, data):    
     if data:
@@ -73,15 +73,40 @@ def pl_move(sid, data):
     else:
         print ('Recieved Empty Data!')
 
+# 允許玩家落子
+def call_player():
+    sio.emit(
+        'pl_turn', 
+        data = {}, 
+        skip_sid=True) 
+    eventlet.sleep(0)
 
+# 等待並從佇列中讀取玩家落子
 def wait_client():
     global loc
+    call_player()
     while len(loc) == 0: 
         eventlet.sleep(1)
     else:
-        send_step()
         ret = loc.pop(0)
-        print(ret)
+        
+        # evaluate the point
+        global chess_graph, now_pl, next_pl
+        step = ret.split(',')
+
+        # 儲存新棋盤
+        chess_graph[(int)(step[0])][(int)(now_pl)][(int)(step[1])] = 1
+
+        # 交換先後手
+        now_pl, next_pl = next_pl, now_pl
+
+        # 印出結果
+        detect = judge.test(chess_graph, [(int)(step[0]),(int)(step[1])])
+        for i in range(0,len(judge.pattern_name)):
+            if detect[i] >= 1:
+                print("{}:{}".format(judge.pattern_name[i],(int)(detect[i])))
+        
+
         return ret
 
 class Client(object):
@@ -99,7 +124,6 @@ class Client(object):
         try:
             global loc, t
             location = wait_client()
-            print(location)
 
             if isinstance(location, str):  # for python3
                 location = [int(n, 10) for n in location.split(",")]
@@ -120,12 +144,12 @@ def run():
     n = 5
     width, height = 13,13
     try:
-        global winner, t
+        global winner, game
         board = Board(width=width, height=height, n_in_row=n)
         game = Game(board)
 
         # set start_player=0 for human first
-        winner = game.start_play(Client(), Client(), start_player=0, is_shown=1)
+        winner = game.start_play(Client(), Client(), start_player=0, is_shown=0)
         has_winner(winner)
 
     except KeyboardInterrupt:
