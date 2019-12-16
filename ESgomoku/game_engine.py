@@ -144,6 +144,13 @@ class Board(object):
 
 class Game(object):
     """game server"""
+    # 用於停止thread
+    running = True
+    def Stop(self):
+        self.running = False
+
+    def isNotRunning(self):
+        return not self.running
 
     def __init__(self, board, **kwargs):
         self.board = board
@@ -184,18 +191,21 @@ class Game(object):
         players = {p1: player1, p2: player2}
         if is_shown:
             self.graphic(self.board, player1.player, player2.player)
-        while True:
-            current_player = self.board.get_current_player()
-            player_in_turn = players[current_player]
-            move = player_in_turn.get_action(self.board)
-            self.board.do_move(move)
-            if is_shown:
-                self.graphic(self.board, player1.player, player2.player)
-            end, winner = self.board.game_end()
-            if end:
+        while self.running:
+            try:
+                current_player = self.board.get_current_player()
+                player_in_turn = players[current_player]
+                move = player_in_turn.get_action(self.board)
+                self.board.do_move(move)
                 if is_shown:
-                    if winner != -1:
-                        print("Game end. Winner is", players[winner])
-                    else:
-                        print("Game end. Tie")
-                return winner
+                    self.graphic(self.board, player1.player, player2.player)
+                end, winner = self.board.game_end()
+                if end:
+                    if is_shown:
+                        if winner != -1:
+                            print("Game end. Winner is", players[winner])
+                        else:
+                            print("Game end. Tie")
+                    return winner
+            except KeyboardInterrupt:
+                return 'duel'

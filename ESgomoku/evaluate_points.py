@@ -1,4 +1,4 @@
-import numpy as np
+import cupy as np
 """
 import keras
 from keras.models import Sequential
@@ -7,6 +7,9 @@ from keras.layers import Conv2D
 """
 
 from game_engine import const
+
+# 加速器
+from numba import jit
 
 class Judge(object):
     #judge_array dot plate = whether there is a shape or not
@@ -20,33 +23,34 @@ class Judge(object):
     # 可以平移的圖形
     pattern_shift = [
          # white(self)          black(enemy)
+        [[0,0,0,0, 1 ,1,1,1,1],[0,0,0,-1, 0 ,0,0,0,0]], # 五
         [[0,0,0,-1, 1 ,1,1,1,-1],[0,0,0,-1, 0 ,0,0,0,-1]], # 活四
         [[0,0,-1,-1, 1 ,1,1,-1,-1],[0,0,0,-1, 0 ,0,0,-1,0]], # 活三
         #[[0,0,-1,-1, 1 ,1,1,-1,-1],[0,0,1,-1, 0 ,0,0,-1,1]], # 假活三(被夏止防守)
         [[0,0,-1,-1, 1 ,1,-1,-1,0],[0,0,-1,-1, 0 ,0,-1,-1,0]] # 活二
         ]
     # 圖形，包含移動前共有幾個
-    pattern_kind = [4,3,2]
+    pattern_kind = [5,4,3,2]
     # 滿足圖形所需的激活分數
-    pattern_esti = [4,3,2]
+    pattern_esti = [5,4,3,2]
     # 圖形的分數
-    pattern_score = [100,50,10]
+    pattern_score = [999,100,50,10]
     # 無法只靠平移檢測的圖形
     pattern_mirror = [
-        [[0,0,0,-1, 1 ,1,1,-1,1],[0,0,0,0, 0 ,0,0,-1,0]], # 跳四(長邊)
-        [[0,0,0,-1, 1 ,-1,1,1,1],[0,0,0,0, 0 ,-1,0,0,0]], # 跳四(短邊)
-        [[0,0,0,-1, 1 ,1,-1,1,1],[0,0,0,0, 0 ,-1,0,0,0]], # 跳四(中間)
-        [[0,0,0,-1, 1 ,1,1,1,-1],[0,0,0,-1, 0 ,0,0,0,1]], # 死四
-        [[0,0,-1,-1, 1 ,1,-1,1,-1],[0,0,0,-1, 0 ,0,-1,0,-1]], # 跳三(長邊)
-        [[0,0,-1,-1, 1 ,-1,1,1,-1],[0,0,0,-1, 0 ,-1,0,0,-1]], # 跳三(短邊)
-        [[0,0,-1,-1, 1 ,1,-1,1,-1],[0,0,0,1, 0 ,0,-1,0,-1]], # 跳三(長邊死, 長邊)
-        [[0,0,-1,-1, 1 ,1,-1,1,-1],[0,0,0,-1, 0 ,0,-1,0,1]], # 跳三(短邊死, 長邊)
-        [[0,0,-1,-1, 1 ,-1,1,1,-1],[0,0,0,-1, 0 ,-1,0,0,1]], # 跳三(長邊死, 短邊)
-        [[0,0,-1,-1, 1 ,-1,1,1,-1],[0,0,0,1, 0 ,-1,0,0,-1]], # 跳三(短邊死, 短邊)
-        [[0,0,-1,-1, 1 ,1,1,-1,0],[0,0,0,-1, 0 ,0,0,1,0]], # 死三
-        [[0,0,0,-1, 1 ,-1,1,-1,0],[0,0,0,-1, 0 ,-1,0,-1,0]], # 跳二
-        [[0,0,-1,-1, 1 ,1,-1,-1,0],[0,0,-1,-1, 0 ,0,-1,1,0]], # 比較弱的活二(單面開)
-        [[0,0,-1,-1, 1 ,1,-1,-1,0],[0,-1,-1,-1, 0 ,0,1,0,0]] # 死二
+        [[0,0,0,-9, 1 ,1,1,-9,1],[0,0,0,0, 0 ,0,0,-9,0]], # 跳四(長邊)
+        [[0,0,0,-9, 1 ,-9,1,1,1],[0,0,0,0, 0 ,-9,0,0,0]], # 跳四(短邊)
+        [[0,0,0,-9, 1 ,1,-9,1,1],[0,0,0,0, 0 ,-9,0,0,0]], # 跳四(中間)
+        [[0,0,0,-9, 1 ,1,1,1,-9],[0,0,0,-9, 0 ,0,0,0,1]], # 死四
+        [[0,0,-9,-9, 1 ,1,-9,1,-9],[0,0,0,-9, 0 ,0,-9,0,-9]], # 跳三(長邊)
+        [[0,0,-9,-9, 1 ,-9,1,1,-9],[0,0,0,-9, 0 ,-9,0,0,-9]], # 跳三(短邊)
+        [[0,0,-9,-9, 1 ,1,-9,1,-9],[0,0,0,1, 0 ,0,-9,0,-9]], # 跳三(長邊死, 長邊)
+        [[0,0,-9,-9, 1 ,1,-9,1,-9],[0,0,0,-9, 0 ,0,-9,0,1]], # 跳三(短邊死, 長邊)
+        [[0,0,-9,-9, 1 ,-9,1,1,-9],[0,0,0,-9, 0 ,-9,0,0,1]], # 跳三(長邊死, 短邊)
+        [[0,0,-9,-9, 1 ,-9,1,1,-9],[0,0,0,1, 0 ,-9,0,0,-9]], # 跳三(短邊死, 短邊)
+        [[0,0,-9,-9, 1 ,1,1,-9,0],[0,0,0,-9, 0 ,0,0,1,0]], # 死三
+        [[0,0,0,-9, 1 ,-9,1,-9,0],[0,0,0,-9, 0 ,-9,0,-9,0]], # 跳二
+        [[0,0,-9,-9, 1 ,1,-9,-9,0],[0,0,-9,-9, 0 ,0,-9,1,0]], # 比較弱的活二(單面開)
+        [[0,0,-9,-9, 1 ,1,-9,-9,0],[0,-9,-9,-9, 0 ,0,1,0,0]] # 死二
     ]
     # 對稱圖形，包含移動前共有幾個
     pattern_mirror_total_appear_times = [3,1,2,4 ,2,1, 2,2,1,1, 3, 1,2,2]
@@ -56,7 +60,7 @@ class Judge(object):
     pattern_mirror_esti = [4,4,4,5, 3,3, 4,4,4,4, 4, 2,3,3]
 
     # 每個圖形對應的名稱，用於debug
-    pattern_name = ['活四','活三','活二',
+    pattern_name = ['五連','活四','活三','活二',
     '跳四(長邊)','跳四(短邊)','跳四(中間)','死四',
     '跳三(長邊)','跳三(短邊)','跳三(長邊死, 長邊)','跳三(短邊死, 長邊)','跳三(長邊死, 短邊)','跳三(短邊死, 短邊)',
     '死三','跳二','弱活二','死二']
@@ -74,7 +78,7 @@ class Judge(object):
             print('Evaluate matrix load from files.')
         except FileNotFoundError:
             # 如果沒有檔案 -> 生成檔案
-
+            print('Evaluate matrix not found, creating a new one...')
             # 初始化
             self.judge_array = []
             self.judge_weight = []
@@ -85,7 +89,7 @@ class Judge(object):
             for index, x in enumerate(self.pattern_kind):
                 for i in range(0,x):
                     # roll the list
-                    self.judge_array.append([ self.pattern_shift[index][0][i:] + self.pattern_shift[index][0][:i], self.pattern_shift[index][1][i:] + self.pattern_shift[index][1][:i]])
+                    self.judge_array.append([ self.pattern_shift[index][0][i:] + self.pattern_shift[index][0][:i], self.pattern_shift[index][1][i:] + self.pattern_shift[index][1][:i] ])
                     # 圖形的分數
                     self.judge_score.append(self.pattern_score[index])
                     #圖形的激活分數
@@ -96,7 +100,7 @@ class Judge(object):
             for index, x in enumerate(self.pattern_mirror_total_appear_times):
                 for i in range(0,x):
                     # reflect the list in "mirror"
-                    self.judge_array.append([self.pattern_mirror[index][0][i:] + self.pattern_mirror[index][0][:i], self.pattern_mirror[index][1][i:] + self.pattern_mirror[index][1][:i]])
+                    self.judge_array.append([self.pattern_mirror[index][0][i:] + self.pattern_mirror[index][0][:i], self.pattern_mirror[index][1][i:] + self.pattern_mirror[index][1][:i] ])
 
                     self.judge_score.append(self.pattern_mirror_score[index])
                     #圖形的激活分數
@@ -141,24 +145,25 @@ class Judge(object):
             np.save('judge_flattern.npy',self.flattern)
             print("Evaluate matrix done.")
 
+    @jit(forceobj=True,nopython=True)
     def force_nined(self, board, loc):
         """Input a location, return a 9*1 list. If the list ins't big enough(out of board), let white fill 0 and black fill 1  """
         target = [[],[],[],[]]
         for x in range(-4,5):
-            if loc[0]+x in range(0,len(board)) and loc[1]+x in range(0,len(board)):
-                target[0].append([board[loc[0]+x][0][loc[1]+x], board[loc[0]+x][1][loc[1]+x]])
+            if loc[0]+x in range(0,len(board[0])) and loc[1]+x in range(0,len(board[0])):
+                target[0].append([board[0][loc[0]+x][loc[1]+x], board[1][loc[0]+x][loc[1]+x]])
             else:
                  target[0].append([0,1])
-            if loc[0]-x in range(0,len(board)) and loc[1]+x in range(0,len(board)):
-                target[1].append([board[loc[0]-x][0][loc[1]+x], board[loc[0]-x][1][loc[1]+x]])
+            if loc[0]-x in range(0,len(board[0])) and loc[1]+x in range(0,len(board[0])):
+                target[1].append([board[0][loc[0]-x][loc[1]+x], board[1][loc[0]-x][loc[1]+x]])
             else:
                  target[1].append([0,1])
-            if loc[0] in range(0,len(board)) and loc[1]+x in range(0,len(board)):
-                target[2].append([board[loc[0]][0][loc[1]+x], board[loc[0]][1][loc[1]+x]])
+            if loc[0] in range(0,len(board[0])) and loc[1]+x in range(0,len(board[0])):
+                target[2].append([board[0][loc[0]][loc[1]+x], board[1][loc[0]][loc[1]+x]])
             else:
                  target[2].append([0,1])
-            if loc[0]+x in range(0,len(board)) and loc[1] in range(0,len(board)):
-                target[3].append([board[loc[0]+x][0][loc[1]], board[loc[0]+x][1][loc[1]]])
+            if loc[0]+x in range(0,len(board[0])) and loc[1] in range(0,len(board[0])):
+                target[3].append([board[0][loc[0]+x][loc[1]], board[1][loc[0]+x][loc[1]]])
             else:
                  target[3].append([0,1])
         return target
@@ -167,14 +172,15 @@ class Judge(object):
     def has_neighbor(self, board, loc):
         """Return the location is isolated(5*5 no other chesses) or not."""
 
-    def test(self, board,player_num, loc):
+    @jit(forceobj=True,nopython=True)
+    def Solve(self, board, loc):
         
         # loc = [x, y], with [1, 1] at the left-down side. Transverse loc to list location
         loc[0], loc[1] = loc[1], loc[0]
-        loc[0] = len(board) - loc[0]
+        loc[0] = len(board[0]) - loc[0]
         loc[1] -= 1
         # put testing chess
-        board[loc[0]][0][loc[1]] = 1
+        board[0][loc[0]][loc[1]] = 1
         # fill testing board with spec value
         target = self.force_nined(board = board, loc = loc)
         total_pattern = None
@@ -201,19 +207,32 @@ class Judge(object):
                 total_pattern += ret
         return total_pattern
 
+    def Analyze_self(self):
+        pass
+
+
 # 測試輸入
 if __name__ == '__main__':       
     judge = Judge()
-    detect = judge.test([ 
-                        [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                        [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                        [[0,0,0,0,0,0,0,0,0],[0,0,1,0,0,0,0,0,0]],
-                        [[0,0,0,1,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                        [[0,0,0,1,1,0,1,1,0],[0,0,0,0,0,0,0,0,0]],
-                        [[0,0,0,1,0,1,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                        [[0,0,1,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                        [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                        [[1,1,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]]] ,0 , loc = [3, 5])
+    detect = judge.Solve([ 
+                       [[0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,1,0,0,0,0],
+                        [0,0,0,1,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0]],
+                       [[0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,1,0,0,0],
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0]]] , loc = [4,4])
 
     for i in range(0,len(judge.pattern_name)):
         if detect[i] >= 1:

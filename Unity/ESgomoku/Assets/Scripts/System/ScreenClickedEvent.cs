@@ -100,7 +100,7 @@ public class ScreenClickedEvent : MonoBehaviour
 
 	private void Click()
 	{
-		Debug.Log("Click Event!");
+		//Debug.Log("Click Event!");
 		if (ScreenClicked != null)
 			ScreenClicked(this, EventArgs.Empty);
 	}

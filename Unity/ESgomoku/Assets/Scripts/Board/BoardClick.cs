@@ -9,6 +9,8 @@ public class BoardClick : MonoBehaviour
 {
 	[SerializeField, Header("棋盤")]
 	GameObject board;
+	[SerializeField, Header("棋盤範圍")]
+	GameObject touchpad;
 	[SerializeField]
 	GameObject black_chess, white_chess;
 	[SerializeField]
@@ -19,6 +21,12 @@ public class BoardClick : MonoBehaviour
 
 	bool isBlack = true;
 	bool[,] has_chess;
+
+
+	[SerializeField, Header("棋盤顏色(正常)")]
+	Color boardColor;
+	[SerializeField, Header("棋盤顏色(拒絕輸入)")]
+	Color boardColor2;
 
 	////////////////////////////////////////////
 
@@ -50,20 +58,41 @@ public class BoardClick : MonoBehaviour
 	{
 		if (ScreenClickedEventThrower.GetComponent<ScreenClickedEvent>().mode == "pl_round")//允許輸入
 		{
-			Debug.Log("Catch Event: BoardClick");
+			//Debug.Log("Catch Event: BoardClick");
 			Click();
 		}
+	}
+
+	public void NewGame()
+	{
+		while (touchpad.transform.childCount > 0)
+		{
+			Destroy(touchpad.transform.GetChild(0));
+		}
+		has_chess = new bool[13, 13];
+	}
+
+	public void LockBoard()
+	{
+		ScreenClickedEventThrower.GetComponent<ScreenClickedEvent>().mode = "locked";
+		board.GetComponent<Image>().color = boardColor2;
+	}
+
+	public void UnlockBoard()
+	{
+		ScreenClickedEventThrower.GetComponent<ScreenClickedEvent>().mode = "pl_round";
+		board.GetComponent<Image>().color = boardColor;
 	}
 
 	/////////////////////////private/////////////////////////////////
 	void Click()
 	{
-		Vector2 pos = new Vector2((int)((Input.mousePosition.x - (board.transform.position.x - board.GetComponent<RectTransform>().rect.width / 2)) / unit_chess.GetComponent<RectTransform>().rect.width), (int)((Input.mousePosition.y - (board.transform.position.y - board.GetComponent<RectTransform>().rect.height / 2)) / unit_chess.GetComponent<RectTransform>().rect.width));
+		Vector2 pos = new Vector2((int)((Input.mousePosition.x - (touchpad.transform.position.x - touchpad.GetComponent<RectTransform>().rect.width / 2)) / unit_chess.GetComponent<RectTransform>().rect.width), (int)((Input.mousePosition.y - (touchpad.transform.position.y - touchpad.GetComponent<RectTransform>().rect.height / 2)) / unit_chess.GetComponent<RectTransform>().rect.width));
 		if (0 <= pos.x && pos.x <= 13 && 0 <= pos.y && pos.y <= 13 && !has_chess[(int)pos.x, (int)pos.y])
 		{
 			ScreenClickedEventThrower.GetComponent<ScreenClickedEvent>().mode = "ai_round";//改成已經輸入
 
-			Debug.Log($"Player Click : {pos}");
+			//Debug.Log($"Player Click : {pos}");
 			has_chess[(int)pos.x, (int)pos.y] = true;
 			Socket_Client.GetComponent<Socket_Client>().pl_move(pos);
 			SummonChess(pos);
@@ -75,14 +104,14 @@ public class BoardClick : MonoBehaviour
 		GameObject chess;
 		if (isBlack)
 		{
-			chess = Instantiate(black_chess, board.transform);
+			chess = Instantiate(black_chess, touchpad.transform);
 		}
 		else
 		{
-			chess = Instantiate(white_chess, board.transform);
+			chess = Instantiate(white_chess, touchpad.transform);
 		}
 		isBlack = !isBlack;
-		chess.transform.SetParent(board.transform);
-		chess.GetComponent<RectTransform>().localPosition = loc * unit_chess.GetComponent<RectTransform>().rect.width - board.GetComponent<RectTransform>().rect.size / 2 + unit_chess.GetComponent<RectTransform>().rect.size / 2;
+		chess.transform.SetParent(touchpad.transform);
+		chess.GetComponent<RectTransform>().localPosition = loc * unit_chess.GetComponent<RectTransform>().rect.width - touchpad.GetComponent<RectTransform>().rect.size / 2 + unit_chess.GetComponent<RectTransform>().rect.size / 2;
 	}
 }

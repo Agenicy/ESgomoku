@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using SocketIO;
 
 public class Socket_Client : MonoBehaviour
@@ -7,23 +8,63 @@ public class Socket_Client : MonoBehaviour
 
 	// 在 Editor 里把 SocketIO 拖过来
 	public SocketIOComponent sio;
-	
-	[SerializeField,Header("事件管理器")]
+
+	[SerializeField, Header("事件管理器")]
 	GameObject ScreenClickedEventThrower;
+
+	[SerializeField, Header("顯示判斷結果")]
+	GameObject analyze_text;
+
+	[SerializeField, Header("棋盤")]
+	GameObject board;
+
+	[SerializeField, Header("棋盤程式碼")]
+	GameObject boardClick;
+
+	System.Diagnostics.Process process;
+	private void Awake()
+	{
+		process = new System.Diagnostics.Process();
+		process.StartInfo.FileName = @"C:\Windows\System32\cmd.exe";
+		process.StartInfo.UseShellExecute = false;
+		process.StartInfo.RedirectStandardOutput = true;
+		process.StartInfo.RedirectStandardInput = true;
+		process.Start();
+		process.StandardInput.AutoFlush = true;
+
+		process.StandardInput.WriteLine(@"ipconfig");
+		/*
+		process.StandardInput.WriteLine(@"D:");
+		process.StandardInput.WriteLine(@"cd D:\Users\User\Documents\GitHub\ESgomoku\ESgomoku");
+		process.StandardInput.WriteLine(@"conda activate python37");
+		process.StandardInput.WriteLine(@"C:/Users/User/Anaconda3/envs/python37/python.exe d:/Users/User/Documents/GitHub/ESgomoku/ESgomoku/game_server.py");*/
+	}
 
 	void Start()
 	{
+		//總之先鎖住鍵盤再說
+		boardClick.GetComponent<BoardClick>().LockBoard();
+
 		if (sio == null)
 			Debug.LogError("Drop a SocketIOComponent to Me!");
 		// 声明 connect 事件和 server_sent 事件的回调函数
 		sio.On("connect", OnConnect);
 		sio.On("ai_move", ReceiveStep);
+		sio.On("judge", ReceiveJudge);
 		sio.On("pl_turn", ReceiveCanMove);
 		sio.On("winner", ReceiveWinner);
 	}
+
+	private void OnDestroy()
+	{
+		process.WaitForExit();
+		process.Close();
+	}
+
 	void OnConnect(SocketIOEvent obj)//連接成功
 	{
-		Debug.Log("Connection Open");
+		//Debug.Log("Connection Open");
+		analyze_text.GetComponent<Text>().text = "";
 	}
 
 	void ReceiveStep(SocketIOEvent obj)//收到電腦落子位置
@@ -33,11 +74,29 @@ public class Socket_Client : MonoBehaviour
 		Debug.Log("ai_move : " + rcv);
 	}
 
+	void ReceiveJudge(SocketIOEvent obj)//伺服器處理完畢，允許玩家落子
+	{
+		JSONObject jsonObject = obj.data;
+		string rcv = jsonObject.GetField("value").str;
+
+		//顯示結果
+		string value = "";
+		string[] pattern_name = { "五連","活四", "活三", "活二", "跳四(長邊)", "跳四(短邊)", "跳四(中間)", "死四", "跳三(長邊)", "跳三(短邊)", "跳三(長邊死, 長邊)", "跳三(短邊死, 長邊)", "跳三(長邊死, 短邊)", "跳三(短邊死, 短邊)", "死三", "跳二", "弱活二", "死二" };
+		for (int i = 0; i < rcv.Length; i++)
+		{
+			if (rcv[i] != '0')
+			{
+				value += $"{pattern_name[i]}:{rcv[i]}\n";
+			}
+		}
+		analyze_text.GetComponent<Text>().text = value;
+	}
+
 	void ReceiveCanMove(SocketIOEvent obj)//伺服器處理完畢，允許玩家落子
 	{
 		ScreenClickedEventThrower.GetComponent<ScreenClickedEvent>().mode = "pl_round";//改成允許輸入
+		boardClick.GetComponent<BoardClick>().UnlockBoard();
 
-		Debug.Log("your turn ...");
 	}
 
 	void ReceiveWinner(SocketIOEvent obj)//收到勝者，遊戲結束
@@ -45,6 +104,7 @@ public class Socket_Client : MonoBehaviour
 		JSONObject jsonObject = obj.data;
 		string rcv = jsonObject.GetField("winner").str;
 		Debug.Log($"winner:{rcv}");
+		analyze_text.GetComponent<Text>().text += $"\n\n{rcv}";
 	}
 
 	//btn
@@ -53,5 +113,9 @@ public class Socket_Client : MonoBehaviour
 		Dictionary<string, string> data = new Dictionary<string, string>();
 		data["loc"] = $"{loc.y},{loc.x}";
 		sio.Emit("pl_move", new JSONObject(data));
+
+		//顯示結果
+		analyze_text.GetComponent<Text>().text = "...";
+		boardClick.GetComponent<BoardClick>().LockBoard();
 	}
 }

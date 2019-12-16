@@ -11,15 +11,11 @@ from game_engine import *
 # 單步評估器
 from evaluate_points import Judge
 judge = Judge()
-chess_graph = [ [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]],
-                [[0,0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0,0]] ]
+chess_graph = [[],[]]
+chess_graph_width = 13
+for i in range(0,chess_graph_width):
+    chess_graph[0].append([0]*chess_graph_width)
+    chess_graph[1].append([0]*chess_graph_width)
 
 now_pl, next_pl = 0, 1
 
@@ -44,6 +40,17 @@ def on_connect(sid, environ):
     if len(t) == 0:
         t.append(threading.Thread(target=run))
         t[0].start()
+    else:
+        print("OH")
+
+# 斷開連結
+@sio.on('disconnect')
+def disconnect(sid):   
+    global game, t
+    print("disconnect ", sid)
+    if game is not None:
+        print(t[0]._stop)
+        game.Stop()
 
 # 電腦落子
 def send_step(): 
@@ -85,8 +92,11 @@ def call_player():
 def wait_client():
     global loc
     call_player()
-    while len(loc) == 0: 
+    while len(loc) == 0:
         eventlet.sleep(1)
+        print("Mom, I'm here!")
+        if game.isNotRunning():
+            raise KeyboardInterrupt
     else:
         ret = loc.pop(0)
         
@@ -94,18 +104,25 @@ def wait_client():
         global chess_graph, now_pl, next_pl
         step = ret.split(',')
 
-        # 儲存新棋盤
-        chess_graph[(int)(step[0])][(int)(now_pl)][(int)(step[1])] = 1
+        # 儲存棋盤 並 印出結果
+        detect = judge.Solve([chess_graph[now_pl],chess_graph[next_pl]], [(int)(step[1])+1 , (int)(step[0])+1])
+        value = ''
+        for i in range(0,len(judge.pattern_name)):
+            value += (str)((int)(detect[i]))
+            if detect[i] >= 1:
+                print("{}:{}".format(judge.pattern_name[i],(int)(detect[i])))
+
+        """for i in range(0,13):
+            print(f"{chess_graph[0][i]}   {chess_graph[1][i]}")"""
+
+        sio.emit(
+            'judge', 
+            data = {'value':value}, 
+            skip_sid=True) 
+        eventlet.sleep(0)
 
         # 交換先後手
         now_pl, next_pl = next_pl, now_pl
-
-        # 印出結果
-        detect = judge.test(chess_graph, [(int)(step[0]),(int)(step[1])])
-        for i in range(0,len(judge.pattern_name)):
-            if detect[i] >= 1:
-                print("{}:{}".format(judge.pattern_name[i],(int)(detect[i])))
-        
 
         return ret
 
@@ -151,7 +168,8 @@ def run():
         # set start_player=0 for human first
         winner = game.start_play(Client(), Client(), start_player=0, is_shown=0)
         has_winner(winner)
-
+        raise KeyboardInterrupt
+        
     except KeyboardInterrupt:
         print('\n\rquit')
 
