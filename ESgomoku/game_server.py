@@ -94,7 +94,6 @@ def wait_client():
     call_player()
     while len(loc) == 0:
         eventlet.sleep(1)
-        print("Mom, I'm here!")
         if game.isNotRunning():
             raise KeyboardInterrupt
     else:
@@ -172,8 +171,8 @@ def run():
         
     except KeyboardInterrupt:
         print('\n\rquit')
+        raise SystemExit
 
 if __name__ == '__main__':
     app = socketio.Middleware(sio, app)
     eventlet.wsgi.server(eventlet.listen(('', 4567)), app)
-    

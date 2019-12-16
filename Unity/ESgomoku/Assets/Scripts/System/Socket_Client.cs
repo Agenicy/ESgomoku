@@ -2,6 +2,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using SocketIO;
+using System.Threading;
 
 public class Socket_Client : MonoBehaviour
 {
@@ -22,22 +23,16 @@ public class Socket_Client : MonoBehaviour
 	GameObject boardClick;
 
 	System.Diagnostics.Process process;
+
 	private void Awake()
 	{
-		process = new System.Diagnostics.Process();
-		process.StartInfo.FileName = @"C:\Windows\System32\cmd.exe";
-		process.StartInfo.UseShellExecute = false;
-		process.StartInfo.RedirectStandardOutput = true;
-		process.StartInfo.RedirectStandardInput = true;
-		process.Start();
-		process.StandardInput.AutoFlush = true;
+		System.Diagnostics.ProcessStartInfo Info2 = new System.Diagnostics.ProcessStartInfo();
 
-		process.StandardInput.WriteLine(@"ipconfig");
-		/*
-		process.StandardInput.WriteLine(@"D:");
-		process.StandardInput.WriteLine(@"cd D:\Users\User\Documents\GitHub\ESgomoku\ESgomoku");
-		process.StandardInput.WriteLine(@"conda activate python37");
-		process.StandardInput.WriteLine(@"C:/Users/User/Anaconda3/envs/python37/python.exe d:/Users/User/Documents/GitHub/ESgomoku/ESgomoku/game_server.py");*/
+		Info2.FileName = "server.bat";//執行的檔案名稱
+		Info2.WorkingDirectory = @"./Assets/scripts/System";
+
+		System.Diagnostics.Process.Start(Info2);
+		Debug.Log("server opened!");
 	}
 
 	void Start()
@@ -57,9 +52,9 @@ public class Socket_Client : MonoBehaviour
 
 	private void OnDestroy()
 	{
-		process.WaitForExit();
-		process.Close();
+		sio.Emit("disconnect");
 	}
+
 
 	void OnConnect(SocketIOEvent obj)//連接成功
 	{
@@ -81,7 +76,7 @@ public class Socket_Client : MonoBehaviour
 
 		//顯示結果
 		string value = "";
-		string[] pattern_name = { "五連","活四", "活三", "活二", "跳四(長邊)", "跳四(短邊)", "跳四(中間)", "死四", "跳三(長邊)", "跳三(短邊)", "跳三(長邊死, 長邊)", "跳三(短邊死, 長邊)", "跳三(長邊死, 短邊)", "跳三(短邊死, 短邊)", "死三", "跳二", "弱活二", "死二" };
+		string[] pattern_name = { "五連", "活四", "活三", "活二", "跳四(長邊)", "跳四(短邊)", "跳四(中間)", "死四", "跳三(長邊)", "跳三(短邊)", "跳三(長邊死, 長邊)", "跳三(短邊死, 長邊)", "跳三(長邊死, 短邊)", "跳三(短邊死, 短邊)", "死三", "跳二", "弱活二", "死二" };
 		for (int i = 0; i < rcv.Length; i++)
 		{
 			if (rcv[i] != '0')
