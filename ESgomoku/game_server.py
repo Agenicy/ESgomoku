@@ -5,8 +5,7 @@ eventlet.monkey_patch()
 import eventlet.wsgi
 from flask import Flask
 import threading, time
-
-import numpy as np
+BlockingThread = True
 
 from game_engine import *
 
@@ -36,10 +35,10 @@ game = None
 
 
 def Reset():
-    global t, judge, loc, game, chess_graph, chess_graph_width, now_pl, next_pl
+    global t, judge, loc, game, chess_graph, chess_graph_width, now_pl, next_pl, BlockingThread
     print("game restart.")
     if len(t) > 0:
-        t[0].flag = False
+        BlockingThread = False
     game.board.__init__()
     game.board.current_player = game.board.players[game.start_player]  # start player
     judge = Judge()
@@ -53,12 +52,12 @@ def Reset():
 # 連接成功
 @sio.on('connect')
 def on_connect(sid, environ):   
-    global t, judge, loc
+    global t, judge, loc, BlockingThread
     print("connect ", sid)
     if len(t) == 0:
         print('new game.')
         t.append(threading.Thread(target=run))
-        t[0].flag = True
+        BlockingThread = True
         t[0].start()
     else:
         pass
@@ -138,7 +137,7 @@ def wait_client():
             'judge', 
             data = {'value':value}, 
             skip_sid=True) 
-        eventlet.sleep(0)
+        eventlet.sleep(1)
 
         # 交換先後手
         now_pl, next_pl = next_pl, now_pl
@@ -180,19 +179,19 @@ def run():
     n = 5
     width, height = 13,13
     try:
-        global winner, game
+        global winner, game, BlockingThread
         board = Board(width=width, height=height, n_in_row=n)
         game = Game(board)
 
         while True:
-            t[0].flag = True # blocking
+            BlockingThread = True # blocking
             print("new game starts")
             # set start_player=0 for human first
             winner = game.start_play(Client(), Client(), start_player=0, is_shown=0)
             has_winner(winner)
-            eventlet.sleep(0)
+            eventlet.sleep(1)
             print("game end")
-            while t[0].flag: # blocking
+            while BlockingThread: # blocking
                 eventlet.sleep(2)
 
     except KeyboardInterrupt:

@@ -67,9 +67,8 @@ public class Socket_Client : MonoBehaviour
 	{
 		JSONObject jsonObject = obj.data;
 		string rcv = jsonObject.GetField("value").str;
-
 		//顯示結果
-		string value = "";
+		string value = "你下出了:\n";
 		string[] pattern_name = { "五連", "活四", "活三", "活二", "跳四(長邊)", "跳四(短邊)", "跳四(中間)", "死四", "跳三(長邊)", "跳三(短邊)", "跳三(長邊死, 長邊)", "跳三(短邊死, 長邊)", "跳三(長邊死, 短邊)", "跳三(短邊死, 短邊)", "死三", "跳二", "弱活二", "死二" };
 		for (int i = 0; i < rcv.Length; i++)
 		{
@@ -83,8 +82,7 @@ public class Socket_Client : MonoBehaviour
 
 	void ReceiveCanMove(SocketIOEvent obj)//伺服器處理完畢，允許玩家落子
 	{
-		analyze_text.GetComponent<Text>().text = "None";
-		state.GetComponent<Text>().text = "your turn...";
+		state.GetComponent<Text>().text = "輪到你了...";
 		ScreenClickedEventThrower.GetComponent<ScreenClickedEvent>().mode = "pl_round";//改成允許輸入
 		boardClick.GetComponent<BoardClick>().UnlockBoard();
 
