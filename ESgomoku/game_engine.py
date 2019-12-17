@@ -184,6 +184,7 @@ class Game(object):
         if start_player not in (0, 1):
             raise Exception('start_player should be either 0 (player1 first) '
                             'or 1 (player2 first)')
+        self.start_player = start_player # for restart game
         self.board.init_board(start_player)
         p1, p2 = self.board.players
         player1.set_player_ind(p1)

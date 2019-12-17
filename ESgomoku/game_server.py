@@ -6,6 +6,8 @@ import eventlet.wsgi
 from flask import Flask
 import threading, time
 
+import numpy as np
+
 from game_engine import *
 
 # 單步評估器
@@ -32,10 +34,14 @@ loc = []
 # main game
 game = None
 
+
 def Reset():
     global t, judge, loc, game, chess_graph, chess_graph_width, now_pl, next_pl
     print("game restart.")
+    if len(t) > 0:
+        t[0].flag = False
     game.board.__init__()
+    game.board.current_player = game.board.players[game.start_player]  # start player
     judge = Judge()
     loc = []
     chess_graph = [[],[]]
@@ -52,6 +58,7 @@ def on_connect(sid, environ):
     if len(t) == 0:
         print('new game.')
         t.append(threading.Thread(target=run))
+        t[0].flag = True
         t[0].start()
     else:
         pass
@@ -61,6 +68,10 @@ def on_connect(sid, environ):
 def disconnect(sid):   
     global game, t
     print("disconnect ", sid)
+    Reset()
+
+@sio.on('restart')
+def restart(sid, data):    
     Reset()
 
 # 電腦落子
@@ -74,7 +85,7 @@ def send_step():
 
 # 冠軍出爐
 def has_winner(winner): 
-    print('has winner!')
+    print(winner)
     sio.emit(
         'winner', 
         data = {'winner':"winner is :{}".format(winner)}, 
@@ -174,12 +185,16 @@ def run():
         game = Game(board)
 
         while True:
+            t[0].flag = True # blocking
             print("new game starts")
             # set start_player=0 for human first
             winner = game.start_play(Client(), Client(), start_player=0, is_shown=0)
             has_winner(winner)
+            eventlet.sleep(0)
             print("game end")
-        
+            while t[0].flag: # blocking
+                eventlet.sleep(2)
+
     except KeyboardInterrupt:
         print('\n\rquit')
 

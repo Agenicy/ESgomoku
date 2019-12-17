@@ -1,4 +1,5 @@
-import cupy as np
+#import cupy as np
+import numpy as np
 """
 import keras
 from keras.models import Sequential
@@ -24,7 +25,7 @@ class Judge(object):
         # 可以平移的圖形
         self.pattern_shift = [
             # white(self)          black(enemy)
-            [[0,0,0,0, 1 ,1,1,1,1],[0,0,0,-1, 0 ,0,0,0,0]], # 五
+            [[0,0,0,0, 1 ,1,1,1,1],[0,0,0,0, 0 ,0,0,0,0]], # 五
             [[0,0,0,-1, 1 ,1,1,1,-1],[0,0,0,-1, 0 ,0,0,0,-1]], # 活四
             [[0,0,-1,-1, 1 ,1,1,-1,-1],[0,0,0,-1, 0 ,0,0,-1,0]], # 活三
             #[[0,0,-1,-1, 1 ,1,1,-1,-1],[0,0,1,-1, 0 ,0,0,-1,1]], # 假活三(被夏止防守)
@@ -141,13 +142,17 @@ class Judge(object):
             self.judge_array = np.array(self.judge_array)
             # 加權函數轉成對角矩陣
             self.judge_weight = np.diag(np.array(self.judge_weight))
+
+            # 轉換形狀方便運算
+            self.judge_array = self.judge_array.swapaxes(0,1).swapaxes(1,2)
+
             np.save('judge_array.npy',self.judge_array)
             np.save('judge_score.npy',self.judge_score)
             np.save('judge_weight.npy',self.judge_weight)
             np.save('judge_flattern.npy',self.flattern)
             print("Evaluate matrix done.")
 
-    @jit(forceobj=True,nopython=True)
+   # @jit(forceobj=True,nopython=True)
     def force_nined(self, board, loc):
         """Input a location, return a 9*1 list. If the list ins't big enough(out of board), let white fill 0 and black fill 1  """
         target = [[],[],[],[]]
@@ -174,9 +179,8 @@ class Judge(object):
     def has_neighbor(self, board, loc):
         """Return the location is isolated(5*5 no other chesses) or not."""
 
-    @jit(forceobj=True,nopython=True)
+   # @jit(forceobj=True,nopython=True)
     def Solve(self, board, loc):
-        
         # loc = [x, y], with [1, 1] at the left-down side. Transverse loc to list location
         loc[0], loc[1] = loc[1], loc[0]
         loc[0] = len(board[0]) - loc[0]
@@ -187,26 +191,25 @@ class Judge(object):
         target = self.force_nined(board = board, loc = loc)
         total_pattern = None
         
-        # 四個方向各算一次
-        for i in range(0,4):
-            target[i] = np.array(target[i])
-            # 用矩陣判斷
-            ret = np.matmul(self.judge_array, target[i])
-            ret = ret.reshape(self.judge_array.shape[0], 2*len(target[i][0]))
-            # 加總主對角線
-            ret = np.dot(ret, np.array([1, 0, 0, 1]))
-            # 運算是否存在pattern (1/2)
-            ret = np.dot( self.judge_weight, ret)
-            # 判斷種類，1 = 有此種類 (2/2)
-            ret = np.maximum(np.floor(ret),0)
-            # 平坦化
-            ret = np.dot(ret, self.flattern)
-            #print("flattern:{}".format(ret))
+        target = np.array(target).swapaxes(0,2).swapaxes(1,2)
 
-            if total_pattern is None:
-                total_pattern = ret
-            else:
-                total_pattern += ret
+        # 用矩陣判斷
+        ret = np.matmul(target, self.judge_array)
+
+        #ret = ret.reshape(self.judge_array.shape[0], 2*len(target[0][0]))
+        # 加總主對角線
+        ret = ret[0]+ret[1]
+
+        # 運算是否存在pattern (1/2)
+        ret = np.matmul( ret, self.judge_weight)
+
+        # 判斷種類，1 = 有此種類 (2/2)
+        ret = np.maximum(np.floor(ret),0)
+
+        # 平坦化
+        ret = np.dot(ret, self.flattern)
+
+        total_pattern = ret[0]+ret[1]+ret[2]+ret[3]
         return total_pattern
 
     def Analyze_self(self):
@@ -216,25 +219,25 @@ class Judge(object):
 # 測試輸入
 if __name__ == '__main__':       
     judge = Judge()
-    detect = judge.Solve([ 
-                       [[0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,1,0,0,0,0],
-                        [0,0,0,1,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0]],
-                       [[0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,1,0,0,0],
-                        [0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0]]] , loc = [4,4])
+    test = [[[0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,1,0,0,0,0],
+            [0,0,0,0,0,1,0,0,0],
+            [0,0,0,0,0,0,1,0,0],
+            [0,0,0,0,0,0,0,1,0],
+            [0,0,0,0,0,0,0,0,1]],
+            [[0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,1,1,0,0,0],
+            [0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0]]]
+    detect = judge.Solve( [test[0],test[1]], loc = [9,1])
 
     for i in range(0,len(judge.pattern_name)):
         if detect[i] >= 1:

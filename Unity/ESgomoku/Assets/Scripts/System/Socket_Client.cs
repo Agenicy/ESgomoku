@@ -83,6 +83,7 @@ public class Socket_Client : MonoBehaviour
 
 	void ReceiveCanMove(SocketIOEvent obj)//伺服器處理完畢，允許玩家落子
 	{
+		analyze_text.GetComponent<Text>().text = "None";
 		state.GetComponent<Text>().text = "your turn...";
 		ScreenClickedEventThrower.GetComponent<ScreenClickedEvent>().mode = "pl_round";//改成允許輸入
 		boardClick.GetComponent<BoardClick>().UnlockBoard();
@@ -94,7 +95,8 @@ public class Socket_Client : MonoBehaviour
 		JSONObject jsonObject = obj.data;
 		string rcv = jsonObject.GetField("winner").str;
 		Debug.Log($"winner:{rcv}");
-		state.GetComponent<Text>().text += $"{rcv}";
+		analyze_text.GetComponent<Text>().text = $"{rcv}";
+		boardClick.GetComponent<BoardClick>().LockBoard();
 	}
 
 	/////////////////////public////////////////////////////
@@ -118,10 +120,15 @@ public class Socket_Client : MonoBehaviour
 		state.GetComponent<Text>().text = "wait for server...";
 		boardClick.GetComponent<BoardClick>().has_chess = new bool[13, 13];
 		boardClick.GetComponent<BoardClick>().LockBoard();
+		boardClick.GetComponent<BoardClick>().isBlack = true;
 		for (int i = 0; i < boardTouchPad.transform.GetChildCount(); i++)
 		{
 			Destroy(boardTouchPad.transform.GetChild(i).gameObject);
 		}
+
+		Dictionary<string, string> data = new Dictionary<string, string>();
+		data["restart"] = "true";
+		sio.Emit("restart", new JSONObject(data));
 	}
 
 }

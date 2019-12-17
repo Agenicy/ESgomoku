@@ -19,7 +19,7 @@ public class BoardClick : MonoBehaviour
 	[SerializeField]
 	GameObject Socket_Client;
 
-	bool isBlack = true;
+	public bool isBlack = true;
 	public bool[,] has_chess;
 
 
@@ -27,6 +27,13 @@ public class BoardClick : MonoBehaviour
 	Color boardColor;
 	[SerializeField, Header("棋盤顏色(拒絕輸入)")]
 	Color boardColor2;
+
+	[SerializeField,Header("玩家頭像外框")]
+	GameObject player_Boarder0, player_Boarder1;
+	[SerializeField, Header("玩家外框色顏色(可以落子)")]
+	Color PlayerColor;
+	[SerializeField, Header("玩家外框色顏色(等待)")]
+	Color PlayerColor2;
 
 	////////////////////////////////////////////
 
@@ -46,6 +53,7 @@ public class BoardClick : MonoBehaviour
 	void Start()
 	{
 		has_chess = new bool[13, 13];
+		ShowPlayerTurn();
 	}
 
 	// Update is called once per frame
@@ -101,8 +109,16 @@ public class BoardClick : MonoBehaviour
 		{
 			chess = Instantiate(white_chess, touchpad.transform);
 		}
-		isBlack = !isBlack;
 		chess.transform.SetParent(touchpad.transform);
 		chess.GetComponent<RectTransform>().localPosition = loc * unit_chess.GetComponent<RectTransform>().rect.width - touchpad.GetComponent<RectTransform>().rect.size / 2 + unit_chess.GetComponent<RectTransform>().rect.size / 2;
+		
+		isBlack = !isBlack;
+		ShowPlayerTurn();
+	}
+
+	void ShowPlayerTurn()
+	{
+		player_Boarder0.GetComponent<Image>().color = (isBlack) ? PlayerColor : PlayerColor2;
+		player_Boarder1.GetComponent<Image>().color = (!isBlack) ? PlayerColor : PlayerColor2;
 	}
 }
