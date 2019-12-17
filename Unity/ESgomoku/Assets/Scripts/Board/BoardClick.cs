@@ -20,7 +20,7 @@ public class BoardClick : MonoBehaviour
 	GameObject Socket_Client;
 
 	bool isBlack = true;
-	bool[,] has_chess;
+	public bool[,] has_chess;
 
 
 	[SerializeField, Header("棋盤顏色(正常)")]
@@ -61,15 +61,6 @@ public class BoardClick : MonoBehaviour
 			//Debug.Log("Catch Event: BoardClick");
 			Click();
 		}
-	}
-
-	public void NewGame()
-	{
-		while (touchpad.transform.childCount > 0)
-		{
-			Destroy(touchpad.transform.GetChild(0));
-		}
-		has_chess = new bool[13, 13];
 	}
 
 	public void LockBoard()

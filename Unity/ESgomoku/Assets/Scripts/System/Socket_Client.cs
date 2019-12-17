@@ -15,10 +15,11 @@ public class Socket_Client : MonoBehaviour
 
 	[SerializeField, Header("顯示判斷結果")]
 	GameObject analyze_text;
+	[SerializeField, Header("顯示狀態")]
+	GameObject state;
 
-	[SerializeField, Header("棋盤")]
-	GameObject board;
-
+	[SerializeField, Header("棋盤觸控板")]
+	GameObject boardTouchPad;
 	[SerializeField, Header("棋盤程式碼")]
 	GameObject boardClick;
 
@@ -28,7 +29,7 @@ public class Socket_Client : MonoBehaviour
 	{
 		System.Diagnostics.ProcessStartInfo Info2 = new System.Diagnostics.ProcessStartInfo();
 
-		Info2.FileName = "server.bat";//執行的檔案名稱
+		Info2.FileName = "detect_and_open_server.bat";//執行的檔案名稱
 		Info2.WorkingDirectory = @"./Assets/scripts/System";
 
 		System.Diagnostics.Process.Start(Info2);
@@ -37,8 +38,6 @@ public class Socket_Client : MonoBehaviour
 
 	void Start()
 	{
-		//總之先鎖住鍵盤再說
-		boardClick.GetComponent<BoardClick>().LockBoard();
 
 		if (sio == null)
 			Debug.LogError("Drop a SocketIOComponent to Me!");
@@ -50,16 +49,11 @@ public class Socket_Client : MonoBehaviour
 		sio.On("winner", ReceiveWinner);
 	}
 
-	private void OnDestroy()
-	{
-		sio.Emit("disconnect");
-	}
-
 
 	void OnConnect(SocketIOEvent obj)//連接成功
 	{
 		//Debug.Log("Connection Open");
-		analyze_text.GetComponent<Text>().text = "";
+		state.GetComponent<Text>().text = "login...";
 	}
 
 	void ReceiveStep(SocketIOEvent obj)//收到電腦落子位置
@@ -89,6 +83,7 @@ public class Socket_Client : MonoBehaviour
 
 	void ReceiveCanMove(SocketIOEvent obj)//伺服器處理完畢，允許玩家落子
 	{
+		state.GetComponent<Text>().text = "your turn...";
 		ScreenClickedEventThrower.GetComponent<ScreenClickedEvent>().mode = "pl_round";//改成允許輸入
 		boardClick.GetComponent<BoardClick>().UnlockBoard();
 
@@ -99,8 +94,10 @@ public class Socket_Client : MonoBehaviour
 		JSONObject jsonObject = obj.data;
 		string rcv = jsonObject.GetField("winner").str;
 		Debug.Log($"winner:{rcv}");
-		analyze_text.GetComponent<Text>().text += $"\n\n{rcv}";
+		state.GetComponent<Text>().text += $"{rcv}";
 	}
+
+	/////////////////////public////////////////////////////
 
 	//btn
 	public void pl_move(Vector2 loc)
@@ -111,6 +108,20 @@ public class Socket_Client : MonoBehaviour
 
 		//顯示結果
 		analyze_text.GetComponent<Text>().text = "...";
+		state.GetComponent<Text>().text = "wait for server...";
 		boardClick.GetComponent<BoardClick>().LockBoard();
 	}
+
+	public void Restart()
+	{
+		analyze_text.GetComponent<Text>().text = "game restart";
+		state.GetComponent<Text>().text = "wait for server...";
+		boardClick.GetComponent<BoardClick>().has_chess = new bool[13, 13];
+		boardClick.GetComponent<BoardClick>().LockBoard();
+		for (int i = 0; i < boardTouchPad.transform.GetChildCount(); i++)
+		{
+			Destroy(boardTouchPad.transform.GetChild(i).gameObject);
+		}
+	}
+
 }

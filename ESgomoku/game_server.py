@@ -32,25 +32,36 @@ loc = []
 # main game
 game = None
 
+def Reset():
+    global t, judge, loc, game, chess_graph, chess_graph_width, now_pl, next_pl
+    print("game restart.")
+    game.board.__init__()
+    judge = Judge()
+    loc = []
+    chess_graph = [[],[]]
+    now_pl, next_pl = 0, 1
+    for i in range(0,chess_graph_width):
+        chess_graph[0].append([0]*chess_graph_width)
+        chess_graph[1].append([0]*chess_graph_width)
+
 # 連接成功
 @sio.on('connect')
 def on_connect(sid, environ):   
-    global t 
+    global t, judge, loc
     print("connect ", sid)
     if len(t) == 0:
+        print('new game.')
         t.append(threading.Thread(target=run))
         t[0].start()
     else:
-        print("OH")
+        pass
 
 # 斷開連結
 @sio.on('disconnect')
 def disconnect(sid):   
     global game, t
     print("disconnect ", sid)
-    if game is not None:
-        print(t[0]._stop)
-        game.Stop()
+    Reset()
 
 # 電腦落子
 def send_step(): 
@@ -75,7 +86,7 @@ def has_winner(winner):
 def pl_move(sid, data):    
     if data:
         global loc
-        print ('pl_move : %s' % data['loc'])
+        print ('pl_move : {}'.format(data['loc']))
         loc.append(data['loc'])
     else:
         print ('Recieved Empty Data!')
@@ -91,11 +102,9 @@ def call_player():
 # 等待並從佇列中讀取玩家落子
 def wait_client():
     global loc
-    call_player()
     while len(loc) == 0:
+        call_player()
         eventlet.sleep(1)
-        if game.isNotRunning():
-            raise KeyboardInterrupt
     else:
         ret = loc.pop(0)
         
@@ -164,14 +173,15 @@ def run():
         board = Board(width=width, height=height, n_in_row=n)
         game = Game(board)
 
-        # set start_player=0 for human first
-        winner = game.start_play(Client(), Client(), start_player=0, is_shown=0)
-        has_winner(winner)
-        raise KeyboardInterrupt
+        while True:
+            print("new game starts")
+            # set start_player=0 for human first
+            winner = game.start_play(Client(), Client(), start_player=0, is_shown=0)
+            has_winner(winner)
+            print("game end")
         
     except KeyboardInterrupt:
         print('\n\rquit')
-        raise SystemExit
 
 if __name__ == '__main__':
     app = socketio.Middleware(sio, app)
