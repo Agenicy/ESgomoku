@@ -66,15 +66,24 @@ public class Socket_Client : MonoBehaviour
 	void ReceiveJudge(SocketIOEvent obj)//伺服器處理完畢，允許玩家落子
 	{
 		JSONObject jsonObject = obj.data;
-		string rcv = jsonObject.GetField("value").str;
+		string rcv_e = jsonObject.GetField("enemy_value").str;
+		string rcv_s = jsonObject.GetField("self_value").str;
 		//顯示結果
-		string value = "你下出了:\n";
+		string value = "阻擋了:\n";
 		string[] pattern_name = { "五連", "活四", "活三", "活二", "跳四(長邊)", "跳四(短邊)", "跳四(中間)", "死四", "跳三(長邊)", "跳三(短邊)", "跳三(長邊死, 長邊)", "跳三(短邊死, 長邊)", "跳三(長邊死, 短邊)", "跳三(短邊死, 短邊)", "死三", "跳二", "弱活二", "死二" };
-		for (int i = 0; i < rcv.Length; i++)
+		for (int i = 0; i < rcv_e.Length; i++)
 		{
-			if (rcv[i] != '0')
+			if (rcv_e[i] != '0')
 			{
-				value += $"{pattern_name[i]}:{rcv[i]}\n";
+				value += $"{pattern_name[i]}:{rcv_e[i]}\n";
+			}
+		}
+		value += "達成了:\n";
+		for (int i = 0; i < rcv_s.Length; i++)
+		{
+			if (rcv_s[i] != '0')
+			{
+				value += $"{pattern_name[i]}:{rcv_s[i]}\n";
 			}
 		}
 		analyze_text.GetComponent<Text>().text = value;

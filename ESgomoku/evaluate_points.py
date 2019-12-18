@@ -185,6 +185,13 @@ class Judge(object):
         loc[0], loc[1] = loc[1], loc[0]
         loc[0] = len(board[0]) - loc[0]
         loc[1] -= 1
+
+        enemyValue = self.Analyze_self([board[1],board[0]], loc)
+        selfValue = self.Analyze_self([board[0],board[1]], loc)
+
+        return [enemyValue, selfValue]
+
+    def Analyze_self(self, board, loc):
         # put testing chess
         board[0][loc[0]][loc[1]] = 1
         # fill testing board with spec value
@@ -212,9 +219,6 @@ class Judge(object):
         total_pattern = ret[0]+ret[1]+ret[2]+ret[3]
         return total_pattern
 
-    def Analyze_self(self):
-        pass
-
 
 # 測試輸入
 if __name__ == '__main__':       
@@ -224,21 +228,27 @@ if __name__ == '__main__':
             [0,0,0,0,0,0,0,0,0],
             [0,0,0,0,0,0,0,0,0],
             [0,0,0,0,1,0,0,0,0],
-            [0,0,0,0,0,1,0,0,0],
-            [0,0,0,0,0,0,1,0,0],
-            [0,0,0,0,0,0,0,1,0],
-            [0,0,0,0,0,0,0,0,1]],
+            [0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0],
+            [0,0,0,0,0,0,0,0,0]],
             [[0,0,0,0,0,0,0,0,0],
             [0,0,0,0,0,0,0,0,0],
             [0,0,0,0,0,0,0,0,0],
             [0,0,0,0,0,0,0,0,0],
             [0,0,0,0,0,0,0,0,0],
             [0,0,0,0,0,0,0,0,0],
-            [0,0,0,0,1,1,0,0,0],
+            [0,0,0,0,0,1,0,0,0],
             [0,0,0,0,0,0,0,0,0],
             [0,0,0,0,0,0,0,0,0]]]
-    detect = judge.Solve( [test[0],test[1]], loc = [9,1])
+    detect = judge.Solve( [test[1],test[0]], loc = [7,3])
+    print(detect)
 
+    print("阻擋了:")
     for i in range(0,len(judge.pattern_name)):
-        if detect[i] >= 1:
-            print("{}:{}".format(judge.pattern_name[i],(int)(detect[i])))
+        if detect[0][i] >= 1:
+            print("{}:{}".format(judge.pattern_name[i],(int)(detect[0][i])))
+    print("達成了:")
+    for i in range(0,len(judge.pattern_name)):
+        if detect[1][i] >= 1:
+            print("{}:{}".format(judge.pattern_name[i],(int)(detect[1][i])))

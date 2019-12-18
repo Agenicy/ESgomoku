@@ -122,20 +122,35 @@ def wait_client():
         global chess_graph, now_pl, next_pl
         step = ret.split(',')
 
-        # 儲存棋盤 並 印出結果
-        detect = judge.Solve([chess_graph[now_pl],chess_graph[next_pl]], [(int)(step[1])+1 , (int)(step[0])+1])
-        value = ''
-        for i in range(0,len(judge.pattern_name)):
-            value += (str)((int)(detect[i]))
-            if detect[i] >= 1:
-                print("{}:{}".format(judge.pattern_name[i],(int)(detect[i])))
+        import copy
+        chess_graph_input = copy.deepcopy(chess_graph)
 
-        """for i in range(0,13):
-            print(f"{chess_graph[0][i]}   {chess_graph[1][i]}")"""
+        # 儲存棋盤 並 印出結果
+        detect = judge.Solve([chess_graph_input[now_pl],chess_graph_input[next_pl]], [(int)(step[1])+1 , (int)(step[0])+1])
+
+        detect_enemy, detect_self = detect[0], detect[1]
+        enemy_value = ''
+        for i in range(0,len(judge.pattern_name)):
+            enemy_value += (str)((int)(detect_enemy[i]))
+            if detect_enemy[i] >= 1:
+                print("{}:{}".format(judge.pattern_name[i],(int)(detect_enemy[i])))
+        
+        self_value = ''
+        for i in range(0,len(judge.pattern_name)):
+            self_value += (str)((int)(detect_self[i]))
+            if detect_self[i] >= 1:
+                print("{}:{}".format(judge.pattern_name[i],(int)(detect_self[i])))
+
+        chess_graph[(int)(now_pl)][chess_graph_width - (int)(step[0]) - 1][(int)(step[1])] = 1
+
+        for i in chess_graph[now_pl]:
+            print(i)
 
         sio.emit(
             'judge', 
-            data = {'value':value}, 
+            data = {'self_value':self_value,
+                    'enemy_value':enemy_value,
+                    }, 
             skip_sid=True) 
         eventlet.sleep(1)
 
