@@ -122,11 +122,8 @@ def wait_client():
         global chess_graph, now_pl, next_pl
         step = ret.split(',')
 
-        import copy
-        chess_graph_input = copy.deepcopy(chess_graph)
-
         # 儲存棋盤 並 印出結果
-        detect = judge.Solve([chess_graph_input[now_pl],chess_graph_input[next_pl]], [(int)(step[1])+1 , (int)(step[0])+1])
+        detect = judge.Solve([chess_graph[now_pl],chess_graph[next_pl]], [(int)(step[1])+1 , (int)(step[0])+1])
 
         detect_enemy, detect_self = detect[0], detect[1]
         enemy_value = ''
