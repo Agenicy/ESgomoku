@@ -1,7 +1,6 @@
 import math
-from evaluate_points import Judge, JudgeArray, np # np will be numpy or cupy
+from evaluate_points import Judge, JudgeArray, Score, np # np will be numpy or cupy
 import copy
-
 class Data:
     step = []
     board = []
@@ -43,6 +42,66 @@ class Node(object):
 
 
 class alpha_beta_tree(object):
+    """
+    > 盤勢分數 = 整個版面上我方 pattern 分數加總 - 敵方 pattern 分數加總
+        - 從第一手開始持續記錄各種pattern數量
+        
+    [第零層]
+        玩家落子，是為 root
+    [第一層]
+        從敵方落子後開始，計算第一次候選步
+            ! 此時節點 board = [ [AI], [Player] ]
+            - 每個候選步都是一個節點，節點的 board 為候選步落子後的盤勢
+            ! 此時 board 順序未變
+            - 紀錄候選步達成的 pattern 分數，為第一次的盤勢分數
+            - 如果勝利則停止計算 並回傳
+            - 如果未勝利，按照候選步更新可落子區域( judge.solvePoint )，並取得新的 searchRange
+            - 按照新的 searchRange 計算第二次候選步
+    [第二層]
+        計算第二次候選步
+            ! 此時節點 board = [ [Player], [AI] ]
+            - 方法與第一次相同
+            - 按照新的 searchRange 計算第三次候選步
+    [第三層]
+        計算第三次候選步
+            ! 此時節點 board = [ [AI], [Player] ]
+            - 方法與第一次相同
+            - 因為抵達深度盡頭 ( step = 0 )，不再延伸子樹
+            * 現在位於「第一個抵達深度盡頭」的節點
+            - 回傳自己的分數 value
+            
+            * 現在回到 parent ( 第二層 )
+            - 檢查 child.value 是否「大於」 enemyValue ( 因為第三層是alpha，對方(第三層)會取最大值 )
+                > 是
+                - 修改 enemyValue = child.value
+            - 由於 for 迴圈，這個動作會持續到所有節點都走過一次
+            - 得到對方(第三層)會走的最佳位置
+            - 回傳最後的分數 = self.value - enemyValue，是為第二次盤勢分數
+            
+            * 現在回到 parent ( 第一層 )
+            ! 此時 child.value 代表對玩家而言的盤勢分數
+            - 檢查 child.value 是否「大於」 enemyValue ( 雖然第二層是beta，但因為分數定義不同，因此他也會取對他來說的最大值 )
+                > 是
+                - 修改 enemyValue = child.value
+            - 由於 for 迴圈，這個動作會持續到所有節點都走過一次
+            
+            * 由於迴圈，現在進入 child ( 第二層，第二棵子樹 )
+            /* 現在會開始剪枝 */
+            - [計算新的第三次候選步]
+            - 由於 for 迴圈，會持續收到child.value
+            /* 如果收到了比之前更大的總和盤勢分數，代表第二層這一步可能走的不是很好? 就放棄吧 */
+            - 如果 child.value > 
+            
+            
+            
+            
+            
+            
+            
+            
+        
+        
+    """
     def __init__(self, step, board, searchRange, judge, enemyLastLoc):
         """敵方盤勢board - 我方動作loc"""
         self.minV = math.nan

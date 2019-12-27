@@ -23,7 +23,7 @@ class Human(object):
         except Exception as e:
             move = -1
         if move == -1 or move not in board.availables:
-            print("invalid move")
+            print(f"invalid move:{move}")
             move = self.get_action(board)
         return move
 
@@ -57,7 +57,7 @@ class DataPlayer(object):
         except Exception as e:
             move = -1
         if move == -1 or move not in board.availables:
-            print("invalid move")
+            print(f"invalid move: {move}")
             move = self.get_action(board)
         return move
 

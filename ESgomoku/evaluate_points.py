@@ -12,16 +12,21 @@ from game_engine import const
 # 加速器
 from numba import jit
 
-from pruning_tree import alpha_beta_tree, Node
+# from pruning_tree import alpha_beta_tree, Node
 
 
 class JudgeArray(object):
+    
+    #! 有許多list會在第一個judge出來後被建構
+    
     # 定義需要防守的對方 pattern
+    #? 對方活三可以用死四強推，或許可以拚到死四活三，因此不列入強制防守範圍
+    #? 被玩家用跳四轉移焦點的可能性?
     defPattern = np.array([
-        1, 1, 1, 0,         # '五連','活四','活三','活二',
+        0, 0, 0, 0,         # '五連','活四','活三','活二',
         1, 1, 1, 1,         # '跳四(長邊)','跳四(短邊)','跳四(中間)','死四',
         # '跳三(長邊)','跳三(短邊)','跳三(長邊死, 長邊)','跳三(短邊死, 長邊)','跳三(長邊死, 短邊)','跳三(短邊死, 短邊)',
-        1, 1, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0,
         0, 0, 0, 0         # '死三','跳二','弱活二','死二'
     ])
 
@@ -32,7 +37,100 @@ class JudgeArray(object):
         0.5, 0.5, 0, 0, 0, 0,
         0, 0, 0, 0         # '死三','跳二','弱活二','死二'
     ])
+    
+    futurePattern = np.array([
+        # will be 5
+        [0, 1, 0, 0,
+         1, 1, 1, 1,
+         0, 0, 0, 0, 0, 0,
+         0, 0, 0, 0],
+        # will be 4
+        [0, 0, 1, 0,
+         0, 0, 0, 0,
+         1, 1, 1, 1, 1, 1,
+         1, 0, 0, 0],
+        # will be 3
+        [0, 0, 0, 1,
+         0, 0, 0, 0,
+         0, 0, 0, 0, 0, 0,
+         0, 1, 1, 1]]).T
+    
+    nowPattern = np.array([
+        # is 5
+        [1, 0, 0, 0,
+         0, 0, 0, 0,
+         0, 0,0, 0, 0, 0,
+         0, 0, 0, 0],
+        # is 4
+        [0, 1, 0, 0,
+         1, 1, 1, 1,
+         0, 0, 0, 0, 0, 0,
+         0, 0, 0, 0],
+        # is 3
+        [0, 0, 1, 0,
+         0, 0, 0, 0,
+         1, 1, 1, 1, 1, 1,
+         1, 0, 0, 0],
+        # is 2
+        [0, 0, 0, 1,
+         0, 0, 0, 0,
+         0, 0, 0, 0, 0, 0,
+         0, 1, 1, 1]]).T
+        
+    pastPattern = np.array([
+        # was 4
+        [1, 0, 0, 0,
+         0, 0, 0, 0,
+         0, 0,0, 0, 0, 0,
+         0, 0, 0, 0],
+        # was 3
+        [0, 1, 0, 0,
+         1, 1, 1, 1,
+         0, 0, 0, 0, 0, 0,
+         0, 0, 0, 0],
+        # was 2
+        [0, 0, 1, 0,
+         0, 0, 0, 0,
+         1, 1, 1, 1, 1, 1,
+         1, 0, 0, 0],
+        # was 1
+        [0, 0, 0, 1,
+         0, 0, 0, 0,
+         0, 0, 0, 0, 0, 0,
+         0, 1, 1, 1]]).T
 
+class Score(object):
+    """用來記錄盤勢，存在於每個NODE與global中"""
+    def __init__(self):
+        '''set pattern to zero array'''
+        self.blackScore = 600
+        self.whiteScore = 500
+    
+    def Get(self):
+        '''
+        self.blackScore = np.dot(self.blackPattern, JudgeArray.judge_score)
+        self.whiteScore = np.dot(self.whitePattern, JudgeArray.judge_score)
+        # 分數零和化
+        self.blackScore, self.whiteScore = self.blackScore - self.whiteScore, self.whiteScore - self.blackScore'''
+        
+        return self.blackScore, self.whiteScore
+    
+    def Add(self, pattern, playerNum):
+        #! pattern = [enemy, self]
+        if playerNum == 0:
+            # 如果一次連成大量 pattern 會有額外 combe 分數
+            self.blackScore += np.dot(pattern[1], JudgeArray.judge_score) * np.sum(pattern[1])
+            self.whiteScore -= np.dot(np.matmul(pattern[0], JudgeArray.pastPattern), JudgeArray.block_score)
+            print(f'b + {np.dot(pattern[1], JudgeArray.judge_score)}, w - {np.dot(np.matmul(pattern[0], JudgeArray.pastPattern), JudgeArray.block_score)}')
+        else:
+            self.blackScore -= np.dot(np.matmul(pattern[0], JudgeArray.pastPattern), JudgeArray.block_score)
+            self.whiteScore += np.dot(pattern[1], JudgeArray.judge_score) * np.sum(pattern[1])
+            print(f'b - {np.dot(np.matmul(pattern[0], JudgeArray.pastPattern), JudgeArray.block_score)}, w + {np.dot(pattern[1], JudgeArray.judge_score)}')
+        
+        limit = 1000
+        if self.blackScore > limit or self.whiteScore > limit:
+            self.blackScore = 2 * limit * self.blackScore / (self.blackScore + self.whiteScore)
+            self.whiteScore = 2 * limit - self.blackScore
 
 class Judge(object):
     """評估器"""
@@ -72,43 +170,32 @@ class Judge(object):
         # 滿足圖形所需的激活分數
         JudgeArray.pattern_esti = [5, 4, 3, 2]
         # 圖形的分數
-        JudgeArray.pattern_score = [999, 100, 50, 10]
+        #> 形成 5 = 10000, 4 = 600, 3 = 400, 2 = 100
+        #> 阻擋 5 = 10000, 4 = 500, 3 = 300, 2 = 80
+        JudgeArray.pattern_score = [1000000, 80000, 400, 100]
         # 無法只靠平移檢測的圖形
         JudgeArray.pattern_mirror = [
-            [[0, 0, 0, -9, 1, 1, 1, -9, 1],
-                [0, 0, 0, 0, 0, 0, 0, -9, 0]],  # 跳四(長邊)
-            [[0, 0, 0, -9, 1, -9, 1, 1, 1],
-                [0, 0, 0, 0, 0, -9, 0, 0, 0]],  # 跳四(短邊)
-            [[0, 0, 0, -9, 1, 1, -9, 1, 1],
-                [0, 0, 0, 0, 0, -9, 0, 0, 0]],  # 跳四(中間)
-            [[0, 0, 0, -9, 1, 1, 1, 1, -9], [0, 0, 0, -9, 0, 0, 0, 0, 1]],  # 死四
-            [[0, 0, -9, -9, 1, 1, -9, 1, -9],
-                [0, 0, 0, -9, 0, 0, -9, 0, -9]],  # 跳三(長邊)
-            [[0, 0, -9, -9, 1, -9, 1, 1, -9],
-                [0, 0, 0, -9, 0, -9, 0, 0, -9]],  # 跳三(短邊)
-            [[0, 0, -9, -9, 1, 1, -9, 1, -9],
-                [0, 0, 0, 1, 0, 0, -9, 0, -9]],  # 跳三(長邊死, 長邊)
-            [[0, 0, -9, -9, 1, 1, -9, 1, -9],
-                [0, 0, 0, -9, 0, 0, -9, 0, 1]],  # 跳三(短邊死, 長邊)
-            [[0, 0, -9, -9, 1, -9, 1, 1, -9],
-                [0, 0, 0, -9, 0, -9, 0, 0, 1]],  # 跳三(長邊死, 短邊)
-            [[0, 0, -9, -9, 1, -9, 1, 1, -9],
-                [0, 0, 0, 1, 0, -9, 0, 0, -9]],  # 跳三(短邊死, 短邊)
-            [[0, 0, -9, -9, 1, 1, 1, -9, 0], [0, 0, 0, -9, 0, 0, 0, 1, 0]],  # 死三
-            [[0, 0, 0, -9, 1, -9, 1, -9, 0], [0, 0, 0, -9, 0, -9, 0, -9, 0]],  # 跳二
-            [[0, 0, -9, -9, 1, 1, -9, -9, 0],
-                [0, 0, -9, -9, 0, 0, -9, 1, 0]],  # 比較弱的活二(單面開)
-            [[0, 0, -9, -9, 1, 1, -9, -9, 0], [0, -9, -9, -9, 0, 0, 1, 0, 0]]  # 死二
+                [[0, 0, 0, -9, 1, 1, 1, -9, 1],[0, 0, 0, 0, 0, 0, 0, -9, 0]],  # 跳四(長邊)
+                [[0, 0, 0, -9, 1, -9, 1, 1, 1],[0, 0, 0, 0, 0, -9, 0, 0, 0]],  # 跳四(短邊)
+                [[0, 0, 0, -9, 1, 1, -9, 1, 1],[0, 0, 0, 0, 0, -9, 0, 0, 0]],  # 跳四(中間)
+                [[0, 0, 0, -9, 1, 1, 1, 1, -9], [0, 0, 0, -9, 0, 0, 0, 0, 1]],  # 死四
+                [[0, 0, -9, -9, 1, 1, -9, 1, -9],[0, 0, 0, -9, 0, 0, -9, 0, -9]],  # 跳三(長邊)
+                [[0, 0, -9, -9, 1, -9, 1, 1, -9],[0, 0, 0, -9, 0, -9, 0, 0, -9]],  # 跳三(短邊)
+                [[0, 0, -9, -9, 1, 1, -9, 1, -9],[0, 0, 0, 1, 0, 0, -9, 0, -9]],  # 跳三(長邊死, 長邊)
+                [[0, 0, -9, -9, 1, 1, -9, 1, -9],[0, 0, 0, -9, 0, 0, -9, 0, 1]],  # 跳三(短邊死, 長邊)
+                [[0, 0, -9, -9, 1, -9, 1, 1, -9], [0, 0, 0, -9, 0, -9, 0, 0, 1]],  # 跳三(長邊死, 短邊)
+                [[0, 0, -9, -9, 1, -9, 1, 1, -9],[0, 0, 0, 1, 0, -9, 0, 0, -9]],  # 跳三(短邊死, 短邊)
+                [[0, 0, -9, -9, 1, 1, 1, -9, 0], [0, 0, 0, -9, 0, 0, 0, 1, 0]],  # 死三
+                [[0, 0, 0, -9, 1, -9, 1, -9, 0], [0, 0, 0, -9, 0, -9, 0, -9, 0]],  # 跳二
+                [[0, 0, -9, -9, 1, 1, -9, -9, 0],[0, 0, -9, -9, 0, 0, -9, 1, 0]],  # 比較弱的活二(單面開)
+                [[0, 0, -9, -9, 1, 1, -9, -9, 0], [0, -9, -9, -9, 0, 0, 1, 0, 0]]  # 死二
         ]
         # 對稱圖形，包含移動前共有幾個
-        JudgeArray.pattern_mirror_total_appear_times = [
-            3, 1, 2, 4, 2, 1, 2, 2, 1, 1, 3, 1, 2, 2]
+        JudgeArray.pattern_mirror_total_appear_times = [3, 1, 2, 4, 2, 1, 2, 2, 1, 1, 3, 1, 2, 2]
         # 對稱圖形的分數
-        JudgeArray.pattern_mirror_score = [
-            60, 60, 30, 30, 50, 50, 45, 45, 45, 45, 20, 5, 5, 1]
+        JudgeArray.pattern_mirror_score = [510, 510, 510, 550, 380, 380, 350, 350, 350, 350, 350, 90, 90, 40]
         # 滿足對稱圖形所需的激活分數
-        JudgeArray.pattern_mirror_esti = [
-            4, 4, 4, 5, 3, 3, 4, 4, 4, 4, 4, 2, 3, 3]
+        JudgeArray.pattern_mirror_esti = [4, 4, 4, 5, 3, 3, 4, 4, 4, 4, 4, 2, 3, 3]
 
         # 每個圖形對應的名稱，用於debug
         JudgeArray.pattern_name = ['五連', '活四', '活三', '活二',
@@ -136,9 +223,20 @@ class Judge(object):
                 print('JudgeArray not exist')
                 self.ResetJudgeArray()
             print('try to load file...', end=' ')
+            
+            # pattern 達成後的分數
+            #// JudgeArray.judge_score = np.load('judge_score.npy')
+            JudgeArray.judge_score = JudgeArray.pattern_score + JudgeArray.pattern_mirror_score
+            JudgeArray.block_score = [500, 300, 80, 20] # 阻擋分數
+            
+            # 判斷 pattern 的矩陣
             JudgeArray.judge_array = np.load('judge_array.npy')
-            JudgeArray.judge_score = np.load('judge_score.npy')
+            
+            
+            # 達成每個 pattern 分別需要的激活分數
             JudgeArray.judge_weight = np.load('judge_weight.npy')
+            
+            # 將 68 種不同位置的pattern 集結成 18 種類型
             JudgeArray.flattern = np.load('judge_flattern.npy')
             print('Evaluate matrix load from files.')
         except FileNotFoundError:
@@ -148,7 +246,7 @@ class Judge(object):
             # 初始化
             JudgeArray.judge_array = []
             JudgeArray.judge_weight = []
-            JudgeArray.judge_score = []
+            #// JudgeArray.judge_score = []
             JudgeArray.flattern = 0
 
             # 非對稱圖形
@@ -157,9 +255,12 @@ class Judge(object):
                     # roll the list
                     JudgeArray.judge_array.append([JudgeArray.pattern_shift[index][0][i:] + JudgeArray.pattern_shift[index]
                                                    [0][:i], JudgeArray.pattern_shift[index][1][i:] + JudgeArray.pattern_shift[index][1][:i]])
-                    # 圖形的分數
+                    
+                    # TODO: DELETE THIS
+                    '''# 圖形的分數
                     JudgeArray.judge_score.append(
-                        JudgeArray.pattern_score[index])
+                       JudgeArray.pattern_score[index])'''
+                       
                     # 圖形的激活分數
                     JudgeArray.judge_weight.append(
                         1/JudgeArray.pattern_esti[index])
@@ -186,9 +287,12 @@ class Judge(object):
                     lst1.reverse()
                     lst2.reverse()
                     JudgeArray.judge_array.append([lst1, lst2])
-                    # 圖形的分數
+                    
+                    # TODO: DELETE THIS
+                    '''# 圖形的分數
                     JudgeArray.judge_score.append(
-                        JudgeArray.pattern_mirror_score[index])
+                        JudgeArray.pattern_mirror_score[index])'''
+                    
                     # 圖形的激活分數
                     JudgeArray.judge_weight.append(
                         1/JudgeArray.pattern_mirror_esti[index])
@@ -224,7 +328,7 @@ class Judge(object):
                 0, 1).swapaxes(1, 2)
 
             np.save('judge_array.npy', JudgeArray.judge_array)
-            np.save('judge_score.npy', JudgeArray.judge_score)
+            #// np.save('judge_score.npy', JudgeArray.judge_score)
             np.save('judge_weight.npy', JudgeArray.judge_weight)
             np.save('judge_flattern.npy', JudgeArray.flattern)
             print("Evaluate matrix done.")
@@ -260,7 +364,7 @@ class Judge(object):
 
     def Solve(self, board_init, loc):
         """針對單一位置做評估，回傳 [破壞對手形狀 與 達成己方形狀]，運算時的改動不會影響到傳入的矩陣"""
-
+        loc[0], loc[1] = loc[1], loc[0]
         loc[0] = len(board_init[0]) - loc[0]
         loc[1] -= 1
 
@@ -394,7 +498,7 @@ if __name__ == '__main__':
              [0, 0, 0, 0, 0, 0, 0, 0, 0],
              [0, 0, 0, 0, 0, 0, 1, 0, 0],
              [0, 0, 0, 1, 0, 1, 0, 0, 0],
-             [0, 0, 0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 1, 1, 0, 0],
              [0, 0, 0, 0, 0, 0, 0, 0, 0],
              [0, 0, 0, 0, 0, 0, 1, 0, 0],
              [0, 0, 0, 0, 0, 0, 0, 1, 0],

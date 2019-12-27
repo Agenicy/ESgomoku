@@ -9,14 +9,18 @@ BlockingThread = True
 
 from game_engine import *
 
-# 單步評估器
-from evaluate_points import Judge
+# 評估器
+from evaluate_points import Judge, JudgeArray, Score
+
 judge = Judge()
+score = None
+
 chess_graph = [[],[]]
 chess_graph_width = 13
 for i in range(0,chess_graph_width):
     chess_graph[0].append([0]*chess_graph_width)
     chess_graph[1].append([0]*chess_graph_width)
+
 
 now_pl, next_pl = 0, 1
 
@@ -35,8 +39,11 @@ game = None
 
 
 def Reset():
-    global t, judge, loc, game, chess_graph, chess_graph_width, now_pl, next_pl, BlockingThread
+    global t, judge, loc, game, chess_graph, chess_graph_width, now_pl, next_pl, BlockingThread, score
     print("game restart.")
+    judge = None
+    score = None
+    
     if len(t) > 0:
         BlockingThread = False
     game.board.__init__()
@@ -60,6 +67,7 @@ def on_connect(sid, environ):
         BlockingThread = True
         t[0].start()
     else:
+        Reset()
         pass
 
 # 斷開連結
@@ -67,7 +75,6 @@ def on_connect(sid, environ):
 def disconnect(sid):   
     global game, t
     print("disconnect ", sid)
-    Reset()
 
 @sio.on('restart')
 def restart(sid, data):    
@@ -122,31 +129,40 @@ def wait_client():
         global chess_graph, now_pl, next_pl
         step = ret.split(',')
 
-        # 儲存棋盤 並 印出結果
+        # 儲存棋盤
         detect = judge.Solve([chess_graph[now_pl],chess_graph[next_pl]], [(int)(step[1])+1 , (int)(step[0])+1])
 
+        # 分析結果
         detect_enemy, detect_self = detect[0], detect[1]
         enemy_value = ''
-        for i in range(0,len(judge.pattern_name)):
+        for i in range(0,len(JudgeArray.pattern_name)):
             enemy_value += (str)((int)(detect_enemy[i]))
             if detect_enemy[i] >= 1:
-                print("{}:{}".format(judge.pattern_name[i],(int)(detect_enemy[i])))
+                print("阻擋了 {}:{}".format(JudgeArray.pattern_name[i],(int)(detect_enemy[i])))
         
         self_value = ''
-        for i in range(0,len(judge.pattern_name)):
+        for i in range(0,len(JudgeArray.pattern_name)):
             self_value += (str)((int)(detect_self[i]))
             if detect_self[i] >= 1:
-                print("{}:{}".format(judge.pattern_name[i],(int)(detect_self[i])))
+                print("達成了 {}:{}".format(JudgeArray.pattern_name[i],(int)(detect_self[i])))
 
+        # 確定落子
         chess_graph[(int)(now_pl)][chess_graph_width - (int)(step[0]) - 1][(int)(step[1])] = 1
 
-        for i in chess_graph[now_pl]:
-            print(i)
-
+        #* 登記分數
+        global score
+        if score is None:
+            score = Score()
+        else:
+            score.Add(detect, playerNum = now_pl)
+        blackScore, whiteScore = score.Get()
+        # 回傳結果
         sio.emit(
             'judge', 
             data = {'self_value':self_value,
                     'enemy_value':enemy_value,
+                    'blackScore':(str)(blackScore),
+                    'whiteScore':(str)(whiteScore)
                     }, 
             skip_sid=True) 
         eventlet.sleep(1)
@@ -180,7 +196,7 @@ class Client(object):
             print(e)
             move = -1
         if move == -1 or move not in board.availables:
-            print("invalid move")
+            print(f"invalid move: {move}")
             move = self.get_action(board)
         return move
 
