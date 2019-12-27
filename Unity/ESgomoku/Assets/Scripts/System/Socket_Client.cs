@@ -18,6 +18,9 @@ public class Socket_Client : MonoBehaviour
 	[SerializeField, Header("顯示狀態")]
 	GameObject state;
 
+	[SerializeField, Header("盤勢")]
+	GameObject potential;
+
 	[SerializeField, Header("棋盤觸控板")]
 	GameObject boardTouchPad;
 	[SerializeField, Header("棋盤程式碼")]
@@ -87,6 +90,10 @@ public class Socket_Client : MonoBehaviour
 			}
 		}
 		analyze_text.GetComponent<Text>().text = value;
+		string rcv_Bvalue = jsonObject.GetField("blackScore").str;
+		string rcv_Wvalue = jsonObject.GetField("whiteScore").str;
+		potential.GetComponent<Slider>().value =  float.Parse(rcv_Bvalue);
+		potential.GetComponent<Slider>().maxValue = float.Parse(rcv_Bvalue) + float.Parse(rcv_Wvalue);
 	}
 
 	void ReceiveCanMove(SocketIOEvent obj)//伺服器處理完畢，允許玩家落子
@@ -123,12 +130,15 @@ public class Socket_Client : MonoBehaviour
 
 	public void Restart()
 	{
+		potential.GetComponent<Slider>().value = 600f;
+		potential.GetComponent<Slider>().maxValue = 2000f;
+
 		analyze_text.GetComponent<Text>().text = "game restart";
 		state.GetComponent<Text>().text = "wait for server...";
 		boardClick.GetComponent<BoardClick>().has_chess = new bool[13, 13];
 		boardClick.GetComponent<BoardClick>().LockBoard();
 		boardClick.GetComponent<BoardClick>().isBlack = true;
-		for (int i = 0; i < boardTouchPad.transform.GetChildCount(); i++)
+		for (int i = 0; i < boardTouchPad.transform.childCount; i++)
 		{
 			Destroy(boardTouchPad.transform.GetChild(i).gameObject);
 		}
