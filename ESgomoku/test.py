@@ -12,5 +12,8 @@ class Node(object):
     def __init__(self, parent, value = 0):
         self.value = parent.value
 
-test = Test()
-test.PrintValue()
+a=Test()
+a.value = 2
+b = a
+b = Test()
+print(a.value,b.value)
