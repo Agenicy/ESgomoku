@@ -17,3 +17,5 @@ a.value = 2
 b = a
 b = Test()
 print(a.value,b.value)
+
+

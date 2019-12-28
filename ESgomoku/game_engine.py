@@ -17,6 +17,9 @@ class const():
     empty_place = '-'
     space = ' '
     row_col = ['0','1','2','3','4','5','6','7','8','9','A','B','C','D','E','F']
+    
+    #AI
+    deep = 3
 
 
 

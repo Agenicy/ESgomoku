@@ -12,8 +12,6 @@ from game_engine import const
 # 加速器
 from numba import jit
 
-# from pruning_tree import alpha_beta_tree, Node
-
 
 class JudgeArray(object):
     
@@ -100,24 +98,43 @@ class JudgeArray(object):
          0, 1, 1, 1]]).T
 
 class Score(object):
-    """用來記錄盤勢，存在於每個NODE與global中"""
+    """用來記錄盤勢，存在於每個NODE與global中
+    player: 0 = enemy, 1 = self
+    """
     def __init__(self):
         '''set pattern to zero array'''
         self.blackScore = 600
         self.whiteScore = 500
     
-    def Get(self):
-        '''
-        self.blackScore = np.dot(self.blackPattern, JudgeArray.judge_score)
-        self.whiteScore = np.dot(self.whitePattern, JudgeArray.judge_score)
-        # 分數零和化
-        self.blackScore, self.whiteScore = self.blackScore - self.whiteScore, self.whiteScore - self.blackScore'''
-        
-        return self.blackScore, self.whiteScore
+    def Get(self, selfIsBlack = True): 
+        """回傳敵我分數"""
+        if selfIsBlack:
+            return self.whiteScore, self.blackScore
+        else:     
+            return self.blackScore, self.whiteScore
     
-    def Add(self, pattern, playerNum):
+    def GetScore(self, selfIsBlack = True):
+        """回傳計算後 self 的盤勢分數"""
+        if selfIsBlack:
+            return (float)(self.blackScore / (self.blackScore + self.whiteScore))
+        else:
+            return (float)(self.whiteScore / (self.blackScore + self.whiteScore))
+        
+    def Add(self, pattern, playerNum = -1, selfIsBlack = None):
+        print('-----------------------------------------------add,score = {}/{}'.format(self.blackScore,self.whiteScore))
+        """傳入pattern = [enemypat, selfPat]，紀錄到Score裡面
+        
+        Arguments:
+            pattern {list} -- [阻擋敵方 pattern, 自己達成 pattern]
+        
+        Keyword Arguments:
+            playerNum {int} -- 用於 server，0 代表當前玩家執黑 (default: {-1})
+            selfIsBlack {bool} -- True代表當前玩家執黑 (default: {None})
+        """
         #! pattern = [enemy, self]
-        if playerNum == 0:
+        #! playerNum : black = 0, white = 1
+        # 傳入 playerNum 或 selfIsBlack
+        if playerNum == 0 or selfIsBlack:
             # 如果一次連成大量 pattern 會有額外 combe 分數
             self.blackScore += np.dot(pattern[1], JudgeArray.judge_score) * np.sum(pattern[1])
             self.whiteScore -= np.dot(np.matmul(pattern[0], JudgeArray.pastPattern), JudgeArray.block_score)
@@ -132,18 +149,19 @@ class Score(object):
             self.blackScore = 2 * limit * self.blackScore / (self.blackScore + self.whiteScore)
             self.whiteScore = 2 * limit - self.blackScore
 
+#? 尚未採用 AIMemory
+class AIMemory(object):
+    """AI會記得他自己進攻的位置，避免被玩家誤導
+    """
+    lastLoc = []
+
 class Judge(object):
-    """評估器"""
+    """評估器
+    player: 0 = enemy, 1 =  self"""
 
     # 兩格內有棋子的點
-    solvePoint = None
-
-    # 搜索深度(-1 = nan)
-    searchStep = 1
-
-    # 自己上一次落子位置
-    # ? 存到別的地方去 (評估的第一步會出問題)
-    myLastLoc = []
+    solvePoint = []
+    solveRange = []
 
     def ResetJudgeArray(self):
         """generate judge_array and judge_weight by analyzing the lists named pattern and pattern_kind"""
@@ -208,11 +226,8 @@ class Judge(object):
 
     def __init__(self):
 
-        # 自己上一次落子位置
-        self.myLastLoc = []
-
         # 清空[附近有棋子]的資訊
-        self.solvePoint = None
+        self.solvePoint = []
 
         try:
             try:
@@ -256,10 +271,6 @@ class Judge(object):
                     JudgeArray.judge_array.append([JudgeArray.pattern_shift[index][0][i:] + JudgeArray.pattern_shift[index]
                                                    [0][:i], JudgeArray.pattern_shift[index][1][i:] + JudgeArray.pattern_shift[index][1][:i]])
                     
-                    # TODO: DELETE THIS
-                    '''# 圖形的分數
-                    JudgeArray.judge_score.append(
-                       JudgeArray.pattern_score[index])'''
                        
                     # 圖形的激活分數
                     JudgeArray.judge_weight.append(
@@ -288,10 +299,6 @@ class Judge(object):
                     lst2.reverse()
                     JudgeArray.judge_array.append([lst1, lst2])
                     
-                    # TODO: DELETE THIS
-                    '''# 圖形的分數
-                    JudgeArray.judge_score.append(
-                        JudgeArray.pattern_mirror_score[index])'''
                     
                     # 圖形的激活分數
                     JudgeArray.judge_weight.append(
@@ -380,34 +387,24 @@ class Judge(object):
         return [self.enemyValue, self.selfValue]
 
     def Solve_and_DetectWin(self, board_init, loc):
-        """等同於Solve，但額外回傳是否已經勝利"""
-        board = self.Solve(board_init, loc)
+        """等同於Solve，但額外紀錄盤勢；會回傳是否已經勝利"""
+        solution = self.Solve(board_init, loc)
 
         # 偵測是否勝利
-        isWin = list([False, True])[
-            int(np.dot(self.selfValue, JudgeArray.winDetect))]
+        isWin = list([False, True])[int(np.dot(self.selfValue, JudgeArray.winDetect))]
 
-        return board, isWin
+        return solution, isWin
 
-    def AI_Solve(self, board, last_loc=None):
+    def AI_Solve(self, board, last_loc, score, judge, alphaIsBlack):
         """遍歷所有附近有棋子的點，找出最佳落子位置"""
+        from pruning_tree import alpha_beta_tree, Node
+        #! board = [player, AI]
+        tree = alpha_beta_tree(board, enemyLastLoc = last_loc, deep = const.deep, score = score, judge = judge, alphaIsBlack = alphaIsBlack)
+        
+        return tree.Run()
 
-        # 尚未建立[需評估位置( = 附近有棋子的位置 )]
-        if self.solvePoint is None:
-            # 依據現在盤面建立[初始 需評估位置]
-            self.Generate_SolvePoint(board)
-
-        # 建立 alpha_beta_tree ，並讓它學會建立子節點
-        # TODO 修好這個
-        '''searchTree = alpha_beta_tree(step = self.searchStep, board = board, 
-                                     searchRange = self.SolveRange(board, need_to_defense, last_loc),
-                                     judge = self)
-
-        # 自動根據 need_to_defense 標出需搜索範圍
-        searchTree.GoThrough()'''
-        return [[0], [0]]
-
-    @jit(forceobj=True, nopython=True)
+    #! [已取代] 改用 AddSolveRange
+    '''#@jit(forceobj=True, nopython=True)
     def Generate_SolvePoint(self, board):
         """初始化 self.solvePoint"""
         self.solvePoint = []
@@ -425,39 +422,45 @@ class Judge(object):
                         for w in range(max(0, x-2), min(x+3, len(board[0]))):
                             # 原本是空位子，需要被檢測
                             if self.solvePoint[w][h] == 0:
-                                self.solvePoint[w][h] = 1
-
-    @jit(forceobj=True, nopython=True)
-    def SolveRange(self, board, needToDefense=False, last_loc=None):
+                                self.solvePoint[w][h] = 1'''
+    #! [已取代] 改用 AddSolveRange
+    '''#@jit(forceobj=True, nopython=True)
+    def SolveRange(self, board):
         """解讀 self.solvePoint，回傳 [[pos 1],[pos 2],...] """
-        ret = []
+        self.solveRange = []
+        
+        for x in range(0, len(board[0])):
+            for y in range(0, len(board[0])):
+                if self.solvePoint[x][y] == 1:
+                    
+                    #? 尚未採用 AIMemory
+                    """# 如果和自己上次落子位置有連線
+                    if abs(x - self.myLastLoc[0]) == abs(y - self.myLastLoc[1]) or (x - self.myLastLoc[0]) == 0 or (y - self.myLastLoc[1]) == 0:
+                        ret.insert(0, [x, y])
+                    # 如果沒有
+                    else:
+                        ret.append([x, y])"""
+                        
+                    self.solveRange.append([x, y])
+        return self.solveRange'''
+    
+    def AddSolveRange(self, board, loc):
+        """在loc處放置棋子後，更新 self.solvePoint & self.solveRange 並回傳新的 [[pos 1],[pos 2],...] """
+        
+        for x in range(loc[0]-2, loc[0]+2):
+            for y in range(loc[1]-2, loc[1]+2):
+                try:
+                    if self.solvePoint[x][y] == 0:
+                        self.solvePoint[x][y] = 1
+                        self.solveRange.insert(1, [[x][y]])
+                except:
+                    # location outside of board
+                    pass
 
-        if needToDefense:
-            for x in range(-4, 5):
-                self.check(board, last_loc[0]+x,    last_loc[1]+x, ret)
-                self.check(board, last_loc[0]-x,    last_loc[1]+x, ret)
-                self.check(board, last_loc[0],      last_loc[1]+x, ret)
-                self.check(board, last_loc[0]+x,    last_loc[1]  , ret)
-        else:
-            for x in range(0, len(board[0])):
-                for y in range(0, len(board[0])):
-                    if self.solvePoint[x][y] == 1:
-                        # 如果和自己上次落子位置有連線
-                        if abs(x - self.myLastLoc[0]) == abs(y - self.myLastLoc[1]) \
-                                or (x - self.myLastLoc[0]) == 0 or (y - self.myLastLoc[1]) == 0:
-                            ret.insert(0, [x, y])
-                        # 如果沒有
-                        else:
-                            ret.append([x, y])
-        return ret
-
-    def check(self, board, posX, posY, ret):
+    """def check(self, board, posX, posY, ret):
         if posX in range(0, len(board[0])) and posY in range(0, len(board[0])):
             if self.solvePoint[posX][posY] == 1:
-                ret.append([[posX], [posY]])
-
-    def Mark_OnePoint(self, loc):
-        return
+                ret.append([[posX], [posY]])"""
 
     def Analyze_self(self, board, loc):
         """檢查 player 0 落子於 {board[0]} 的 {loc} 對盤面的影響"""
@@ -512,18 +515,17 @@ if __name__ == '__main__':
              [0, 0, 0, 0, 0, 1, 0, 0, 0],
              [0, 0, 0, 0, 0, 0, 0, 0, 0],
              [0, 0, 0, 0, 0, 0, 0, 0, 0]]]
-    if True:
-        detect = judge.Solve([test[0], test[1]], loc=[5, 5])
 
-        print("阻擋了:")
-        for i in range(0, len(JudgeArray.pattern_name)):
-            if detect[0][i] >= 1:
-                print("{}:{}".format(
-                    judge.pattern_name[i], (int)(detect[0][i])))
-        print("達成了:")
-        for i in range(0, len(JudgeArray.pattern_name)):
-            if detect[1][i] >= 1:
-                print("{}:{}".format(
-                    JudgeArray.pattern_name[i], (int)(detect[1][i])))
-    else:
-        judge.AI_Solve([test[1], test[0]], last_loc=[5, 5])
+    detect = judge.Solve([test[0], test[1]], loc=[5, 5])
+
+    print("阻擋了:")
+    for i in range(0, len(JudgeArray.pattern_name)):
+        if detect[0][i] >= 1:
+            print("{}:{}".format(
+                judge.pattern_name[i], (int)(detect[0][i])))
+    print("達成了:")
+    for i in range(0, len(JudgeArray.pattern_name)):
+        if detect[1][i] >= 1:
+            print("{}:{}".format(
+                JudgeArray.pattern_name[i], (int)(detect[1][i])))
+

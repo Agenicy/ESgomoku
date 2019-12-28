@@ -155,7 +155,14 @@ def wait_client():
             score = Score()
         else:
             score.Add(detect, playerNum = now_pl)
-        blackScore, whiteScore = score.Get()
+        whiteScore, blackScore = score.Get(selfIsBlack = True)
+        
+        print(score.Get())
+        
+        #* 預測最佳落點
+        print(judge.AI_Solve(board = [chess_graph[now_pl],chess_graph[next_pl]], last_loc = [(int)(step[1])+1 , (int)(step[0])+1] ,
+                             score = score, judge = judge, alphaIsBlack = False))
+        
         # 回傳結果
         sio.emit(
             'judge', 
