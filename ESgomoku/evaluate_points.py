@@ -1,5 +1,5 @@
-#import cupy as np
-import numpy as np
+import cupy as np
+#import numpy as np
 """
 import keras
 from keras.models import Sequential
@@ -12,6 +12,7 @@ from game_engine import const
 # 加速器
 from numba import jit
 
+from copy import deepcopy
 
 class JudgeArray(object):
     
@@ -101,10 +102,15 @@ class Score(object):
     """用來記錄盤勢，存在於每個NODE與global中
     player: 0 = enemy, 1 = self
     """
-    def __init__(self):
+    def __init__(self, copyFrom = None):
         '''set pattern to zero array'''
-        self.blackScore = 600
-        self.whiteScore = 500
+        if copyFrom is None:
+            self.blackScore = 600
+            self.whiteScore = 500
+        else:
+            # 複製一份現存的 Score 物件
+            self.blackScore = deepcopy(copyFrom.blackScore)
+            self.whiteScore =deepcopy(copyFrom.whiteScore)
     
     def Get(self, selfIsBlack = True): 
         """回傳敵我分數"""
@@ -120,8 +126,8 @@ class Score(object):
         else:
             return (float)(self.whiteScore / (self.blackScore + self.whiteScore))
         
-    def Add(self, pattern, playerNum = -1, selfIsBlack = None):
-        print('-----------------------------------------------add,score = {}/{}'.format(self.blackScore,self.whiteScore))
+    def Add(self, patternList, playerNum = -1, selfIsBlack = None):
+        # print('Score add, score = {}/{}'.format(self.blackScore,self.whiteScore))
         """傳入pattern = [enemypat, selfPat]，紀錄到Score裡面
         
         Arguments:
@@ -134,16 +140,16 @@ class Score(object):
         #! pattern = [enemy, self]
         #! playerNum : black = 0, white = 1
         # 傳入 playerNum 或 selfIsBlack
+        pattern = np.array(patternList, dtype=np.float32)
         if playerNum == 0 or selfIsBlack:
             # 如果一次連成大量 pattern 會有額外 combe 分數
-            self.blackScore += np.dot(pattern[1], JudgeArray.judge_score) * np.sum(pattern[1])
-            self.whiteScore -= np.dot(np.matmul(pattern[0], JudgeArray.pastPattern), JudgeArray.block_score)
-            print(f'b + {np.dot(pattern[1], JudgeArray.judge_score)}, w - {np.dot(np.matmul(pattern[0], JudgeArray.pastPattern), JudgeArray.block_score)}')
+            self.blackScore += np.dot(pattern[1],  np.array(JudgeArray.judge_score, dtype=np.float32)) * np.sum(pattern[1])
+            self.whiteScore -= np.dot(np.matmul(pattern[0], np.array(JudgeArray.pastPattern, dtype=np.float32)), np.array(JudgeArray.block_score, dtype=np.float32))
+            # print(f'b + {np.dot(pattern[1], JudgeArray.judge_score)}, w - {np.dot(np.matmul(pattern[0], JudgeArray.pastPattern), JudgeArray.block_score)}')
         else:
-            self.blackScore -= np.dot(np.matmul(pattern[0], JudgeArray.pastPattern), JudgeArray.block_score)
-            self.whiteScore += np.dot(pattern[1], JudgeArray.judge_score) * np.sum(pattern[1])
-            print(f'b - {np.dot(np.matmul(pattern[0], JudgeArray.pastPattern), JudgeArray.block_score)}, w + {np.dot(pattern[1], JudgeArray.judge_score)}')
-        
+            self.blackScore -= np.dot(np.matmul(pattern[0], np.array(JudgeArray.pastPattern, dtype=np.float32)), np.array(JudgeArray.block_score, dtype=np.float32))
+            self.whiteScore += np.dot(pattern[1], np.array(JudgeArray.judge_score, dtype=np.float32)) * np.sum(pattern[1])
+            # print(f'b - {np.dot(np.matmul(pattern[0], JudgeArray.pastPattern), JudgeArray.block_score)}, w + {np.dot(pattern[1], JudgeArray.judge_score)}')
         limit = 1000
         if self.blackScore > limit or self.whiteScore > limit:
             self.blackScore = 2 * limit * self.blackScore / (self.blackScore + self.whiteScore)
@@ -158,7 +164,7 @@ class AIMemory(object):
 class Judge(object):
     """評估器
     player: 0 = enemy, 1 =  self"""
-
+    
     # 兩格內有棋子的點
     solvePoint = []
     solveRange = []
@@ -224,20 +230,28 @@ class Judge(object):
         # flattern使用的計數器
         JudgeArray.flag = 0
 
-    def __init__(self):
-
-        # 清空[附近有棋子]的資訊
-        self.solvePoint = []
+    def __init__(self, width = 13, copyFrom = None):
+        
+        self.width = width
+        
+        if not copyFrom is None:
+            self.solvePoint = deepcopy(copyFrom.solvePoint)
+            self.solveRange = deepcopy(copyFrom.solveRange)
+        else:
+            # 清空[附近有棋子]的資訊
+            self.solvePoint = []
+            for i in range(0, width):
+                self.solvePoint.append([0]*width)
 
         try:
             try:
-                print('Try to find JudgeArray...', end=' ')
+                # print('Try to find JudgeArray...', end=' ')
                 JudgeArray.judge_array
-                print('JudgeArray exist')
+                # print('JudgeArray exist')
             except AttributeError:
-                print('JudgeArray not exist')
+                # print('JudgeArray not exist')
                 self.ResetJudgeArray()
-            print('try to load file...', end=' ')
+            # print('try to load file...', end=' ')
             
             # pattern 達成後的分數
             #// JudgeArray.judge_score = np.load('judge_score.npy')
@@ -253,11 +267,11 @@ class Judge(object):
             
             # 將 68 種不同位置的pattern 集結成 18 種類型
             JudgeArray.flattern = np.load('judge_flattern.npy')
-            print('Evaluate matrix load from files.')
+            # print('Evaluate matrix load from files.')
         except FileNotFoundError:
 
             # 如果沒有檔案 -> 生成檔案
-            print('Evaluate matrix not found, creating a new one...', end=' ')
+            # print('Evaluate matrix not found, creating a new one...', end=' ')
             # 初始化
             JudgeArray.judge_array = []
             JudgeArray.judge_weight = []
@@ -269,9 +283,9 @@ class Judge(object):
                 for i in range(0, x):
                     # roll the list
                     JudgeArray.judge_array.append([JudgeArray.pattern_shift[index][0][i:] + JudgeArray.pattern_shift[index]
-                                                   [0][:i], JudgeArray.pattern_shift[index][1][i:] + JudgeArray.pattern_shift[index][1][:i]])
+                                                [0][:i], JudgeArray.pattern_shift[index][1][i:] + JudgeArray.pattern_shift[index][1][:i]])
                     
-                       
+                    
                     # 圖形的激活分數
                     JudgeArray.judge_weight.append(
                         1/JudgeArray.pattern_esti[index])
@@ -282,7 +296,7 @@ class Judge(object):
                 for i in range(0, x):
                     # reflect the list in "mirror"
                     JudgeArray.judge_array.append([JudgeArray.pattern_mirror[index][0][i:] + JudgeArray.pattern_mirror[index]
-                                                   [0][:i], JudgeArray.pattern_mirror[index][1][i:] + JudgeArray.pattern_mirror[index][1][:i]])
+                                                [0][:i], JudgeArray.pattern_mirror[index][1][i:] + JudgeArray.pattern_mirror[index][1][:i]])
 
                     JudgeArray.judge_score.append(
                         JudgeArray.pattern_mirror_score[index])
@@ -294,7 +308,7 @@ class Judge(object):
 
                     # 反轉圖形
                     lst1, lst2 = JudgeArray.pattern_mirror[index][0][i:] + JudgeArray.pattern_mirror[index][0][:
-                                                                                                               i], JudgeArray.pattern_mirror[index][1][i:] + JudgeArray.pattern_mirror[index][1][:i]
+                                                                                                            i], JudgeArray.pattern_mirror[index][1][i:] + JudgeArray.pattern_mirror[index][1][:i]
                     lst1.reverse()
                     lst2.reverse()
                     JudgeArray.judge_array.append([lst1, lst2])
@@ -338,9 +352,10 @@ class Judge(object):
             #// np.save('judge_score.npy', JudgeArray.judge_score)
             np.save('judge_weight.npy', JudgeArray.judge_weight)
             np.save('judge_flattern.npy', JudgeArray.flattern)
-            print("Evaluate matrix done.")
+            # print("Evaluate matrix done.")
+                
 
-    # @jit(forceobj=True,nopython=True)
+    #@jit(forceobj=True,nopython=True)
     def force_nined(self, board, loc):
         """Input a location, return a 9*1 list. If the list ins't big enough(out of board), let white fill 0 and black fill 1  """
 
@@ -371,16 +386,19 @@ class Judge(object):
 
     def Solve(self, board_init, loc):
         """針對單一位置做評估，回傳 [破壞對手形狀 與 達成己方形狀]，運算時的改動不會影響到傳入的矩陣"""
+        
+        """
+        * 在 AISolve 已經處裡
         loc[0], loc[1] = loc[1], loc[0]
         loc[0] = len(board_init[0]) - loc[0]
         loc[1] -= 1
-
-        import copy
-        board = copy.deepcopy(board_init)
+        """
+        
+        board = deepcopy(board_init)
         # 儲存結果
         self.enemyValue = self.Analyze_self([board[1], board[0]], loc)
 
-        board = copy.deepcopy(board_init)
+        board = deepcopy(board_init)
         # 儲存結果
         self.selfValue = self.Analyze_self([board[0], board[1]], loc)
 
@@ -397,70 +415,29 @@ class Judge(object):
 
     def AI_Solve(self, board, last_loc, score, judge, alphaIsBlack):
         """遍歷所有附近有棋子的點，找出最佳落子位置"""
+        last_loc[0], last_loc[1] = last_loc[1], last_loc[0]
+        last_loc[0] = len(board[0]) - last_loc[0]
+        last_loc[1] -= 1
+        
         from pruning_tree import alpha_beta_tree, Node
         #! board = [player, AI]
         tree = alpha_beta_tree(board, enemyLastLoc = last_loc, deep = const.deep, score = score, judge = judge, alphaIsBlack = alphaIsBlack)
         
         return tree.Run()
 
-    #! [已取代] 改用 AddSolveRange
-    '''#@jit(forceobj=True, nopython=True)
-    def Generate_SolvePoint(self, board):
-        """初始化 self.solvePoint"""
-        self.solvePoint = []
-        # 初始化
-        for i in range(0, len(board[0])):
-            self.solvePoint.append([0]*len(board[0]))
-
-        # 建立後續的位置
-        for x in range(0, len(board[0])):
-            for y in range(0, len(board[0])):
-                if board[0][x][y] or board[1][x][y] == 1:
-                    # 有棋子，未來不用檢測
-                    self.solvePoint[x][y] = -1
-                    for h in range(max(0, y-2), min(y+3, len(board[0]))):
-                        for w in range(max(0, x-2), min(x+3, len(board[0]))):
-                            # 原本是空位子，需要被檢測
-                            if self.solvePoint[w][h] == 0:
-                                self.solvePoint[w][h] = 1'''
-    #! [已取代] 改用 AddSolveRange
-    '''#@jit(forceobj=True, nopython=True)
-    def SolveRange(self, board):
-        """解讀 self.solvePoint，回傳 [[pos 1],[pos 2],...] """
-        self.solveRange = []
-        
-        for x in range(0, len(board[0])):
-            for y in range(0, len(board[0])):
-                if self.solvePoint[x][y] == 1:
-                    
-                    #? 尚未採用 AIMemory
-                    """# 如果和自己上次落子位置有連線
-                    if abs(x - self.myLastLoc[0]) == abs(y - self.myLastLoc[1]) or (x - self.myLastLoc[0]) == 0 or (y - self.myLastLoc[1]) == 0:
-                        ret.insert(0, [x, y])
-                    # 如果沒有
-                    else:
-                        ret.append([x, y])"""
-                        
-                    self.solveRange.append([x, y])
-        return self.solveRange'''
-    
     def AddSolveRange(self, board, loc):
         """在loc處放置棋子後，更新 self.solvePoint & self.solveRange 並回傳新的 [[pos 1],[pos 2],...] """
-        
-        for x in range(loc[0]-2, loc[0]+2):
-            for y in range(loc[1]-2, loc[1]+2):
+                
+        for x in range(loc[0]-2, loc[0]+3):
+            for y in range(loc[1]-2, loc[1]+3):
                 try:
-                    if self.solvePoint[x][y] == 0:
-                        self.solvePoint[x][y] = 1
-                        self.solveRange.insert(1, [[x][y]])
-                except:
+                    if x >= 0 and y >= 0 :
+                        if self.solvePoint[x][y] == 0:
+                            self.solvePoint[x][y] = 1
+                            self.solveRange.insert(0, [x, y])
+                except IndexError:
                     # location outside of board
                     pass
-
-    """def check(self, board, posX, posY, ret):
-        if posX in range(0, len(board[0])) and posY in range(0, len(board[0])):
-            if self.solvePoint[posX][posY] == 1:
-                ret.append([[posX], [posY]])"""
 
     def Analyze_self(self, board, loc):
         """檢查 player 0 落子於 {board[0]} 的 {loc} 對盤面的影響"""
@@ -492,7 +469,7 @@ class Judge(object):
         total_pattern = ret[0]+ret[1]+ret[2]+ret[3]
 
         return total_pattern
-
+    
 
 # 測試輸入
 if __name__ == '__main__':

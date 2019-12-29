@@ -18,4 +18,3 @@ b = a
 b = Test()
 print(a.value,b.value)
 
-
