@@ -21,7 +21,7 @@ class Node(object):
         
         Keyword Arguments:
             board {list2D} -- [敵方落子位置, 我方落子位置] (default: {[]})
-            loc {list} -- 敵方落子於[x, y] (default: {None})
+            loc {list} -- 敵方落子於 location [x, y] (default: {None})
             parent {Node} -- 父節點 (default: {None})
             deep {int} -- 搜索深度，每次建立 child 傳入時要 -1 (default: {0})
             isAlpha {bool} -- 本節點為 alpha 節點 (default: {True})
@@ -39,10 +39,11 @@ class Node(object):
         
         #*print(f'pruning_tree / enemy loc at: {loc}')
         # about judge
-        self.board = board
+        self.board = deepcopy(board)
         self.judge = Judge(copyFrom = judge) # copy
         if deep > 0:
             self.judge.AddSolveRange(board, loc)
+            # print(f'[node] solverange = {self.judge.solveRange}')
         
         self.loc = loc
         
@@ -51,9 +52,9 @@ class Node(object):
         
         if isAlpha:
             # 提早終止的回傳值
-            self.terminateValue = math.nan
+            self.terminateValue = 0
         else:  
-            self.terminateValue = -math.nan
+            self.terminateValue = 1
             
         # isAlpha XNOR alphaIsBlack -> 本節點執黑
         if isAlpha == alphaIsBlack:
@@ -69,8 +70,8 @@ class Node(object):
         
     def GetValue(self):
         """回傳 (對於Alpha的) 盤勢分數，應該只有最後的alpha節點 (的 beta 半節點) 會呼叫"""
-        # parent is Beta
         if self.isAlpha:
+            # parent is Beta
             raise Exception('Beta 節點嘗試取得分數!')
         return self.score.GetScore(selfIsBlack = self.IsBlack)
 
@@ -89,23 +90,30 @@ class Node(object):
         
         #* 落子的一方勝利，終止運算
         if isWin:
-            print('terminate.',end=' ')
-            return self.terminateValue
+            #//print(f'terminate with value = {self.terminateValue}')
+            
+            # is root
+            if self.parent is None:
+                print('root return')
+                return [0, 0], self.terminateValue
+            
+            return self.terminateValue, True
         
         #* 沒分出勝負 -> 紀錄分數
         #*print('pruning_tree / node.score.add() ')
         self.score.Add(solution, selfIsBlack = self.IsBlack)
         
         
-        #> print
-        #*print('score = {}'.format(self.score.GetScore()))
-        
         #> 如果達到搜索深度 = 本節點單純用於回傳分數
         if self.deep == 0:
-            return self.GetValue()
+            val = self.GetValue()
+            #* print(f'deep end. return {self.loc} : {val}')
+            return val, False
+        else:
+            print(f'searching at {self.loc}')
         
         #> 還沒達到搜索深度 -> 生成 child
-        # print('searching...')
+        #*print('searching...')
         for step in self.judge.solveRange:
             
             child = Node(board=deepcopy(self.board), loc=step,
@@ -113,8 +121,8 @@ class Node(object):
                          judge=self.judge, alphaIsBlack=self.alphaIsBlack)
             
             # 取得 child 的分數( 他自己算，或是從他 child 裡面找 )
-            value = child.Run()
-            # print(f'pruning_tree / get child value')
+            value, is_Terminated = child.Run()
+            print(f'get child value: {step} = {value}')
             
             # 檢查 child 是否被剪枝
             if value is None:
@@ -127,19 +135,20 @@ class Node(object):
                 
                 if not self.parent is None:
                     # leaf
-                    if value >= self.parent.value:
+                    if value > self.parent.value:
                         # 對 beta 來說，這個節點比已經找過的還差 -> beta 不會選這裡，剪枝
-                        print(f'alpha cutoff : {value} >= {self.parent.value}')
+                        print(f'alpha cutoff : {value} > {self.parent.value}')
                         return None
                 else:
-        
-                    #> print
-                    # print('pruning_tree / Run() / find a new step')
-                    self.step = step
+                    # root
+                    #? nothing?
+                    pass
                     
                 if value >= self.value:
                     # alpha 要選擇最大值的節點
+                    #// print(f'選擇已更新: {step} with value = {value}')
                     self.value = value
+                    self.step = step
                     
             else:
                 # beta
@@ -147,12 +156,15 @@ class Node(object):
                 
                 if value <= self.parent.value:
                     # 對 alpha 來說，這個節點比已經找過的還差 -> alpha 不會選這裡，剪枝
-                    print(f'beta cutoff : {value} <= {self.parent.value}')
+                    print(f'beta cutoff : {value} < {self.parent.value}')
                     return None
                 
-                if value <= self.value:
+                if value < self.value:
                     # beta 要選擇最小值的節點
                     self.value = value
+                
+                if is_Terminated:
+                    break
 
         # root
         if self.parent is None:
@@ -162,13 +174,13 @@ class Node(object):
             return self.step, self.score.whiteScore
         else:
             #搜尋完畢，回傳
-            return self.value
+            return self.value, False
                             
                 
             
 
 class alpha_beta_tree(object):
-    """
+    '''
         > 總盤勢分數 = 我方盤勢分數 * (進攻係數) - 敵方盤勢分數
         > 我方盤勢分數 = 整個版面上我方 pattern 分數 * [(達成權值)] - 被敵方阻擋的 pattern 分數 * [(阻擋權值)]
         > 敵方盤勢分數 = 整個版面上敵方 pattern 分數 * [(達成權值)] - 被我方阻擋的 pattern 分數 * [(阻擋權值)]
@@ -234,13 +246,13 @@ class alpha_beta_tree(object):
                 - 繼續尋找下一棵子樹
         [結束]
         回傳 stepChoose        
-    """
+    '''
     
     def __init__(self, board, enemyLastLoc, deep, score, judge, alphaIsBlack):
         """[第零層]\n
         玩家落子，是為 root"""
         #> print
-        print(r'[tree]',end=' ')
+        print(r'[tree]')
         self.root = Node(board=deepcopy(board), loc=enemyLastLoc,
                          parent=None, deep=deepcopy(deep), isAlpha=True, score=deepcopy(score),
                          judge=deepcopy(judge), alphaIsBlack=alphaIsBlack)

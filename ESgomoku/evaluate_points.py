@@ -29,14 +29,16 @@ class JudgeArray(object):
         0, 0, 0, 0         # '死三','跳二','弱活二','死二'
     ])
 
+    # 把活四拿掉了
     winDetect = np.array([
-        1, 1, 0.5, 0,         # '五連','活四','活三','活二',
+        1, 0.5, 0.5, 0,         # '五連','活四','活三','活二',
         0.5, 0.5, 0.5, 0.5,         # '跳四(長邊)','跳四(短邊)','跳四(中間)','死四',
         # '跳三(長邊)','跳三(短邊)','跳三(長邊死, 長邊)','跳三(短邊死, 長邊)','跳三(長邊死, 短邊)','跳三(短邊死, 短邊)',
         0.5, 0.5, 0, 0, 0, 0,
         0, 0, 0, 0         # '死三','跳二','弱活二','死二'
     ])
     
+    # 用 matmul 將現在的 pattern 轉換成過去的 pattern
     futurePattern = np.array([
         # will be 5
         [0, 1, 0, 0,
@@ -58,7 +60,7 @@ class JudgeArray(object):
         # is 5
         [1, 0, 0, 0,
          0, 0, 0, 0,
-         0, 0,0, 0, 0, 0,
+         0, 0, 0, 0, 0, 0,
          0, 0, 0, 0],
         # is 4
         [0, 1, 0, 0,
@@ -80,7 +82,7 @@ class JudgeArray(object):
         # was 4
         [1, 0, 0, 0,
          0, 0, 0, 0,
-         0, 0,0, 0, 0, 0,
+         0, 0, 0, 0, 0, 0,
          0, 0, 0, 0],
         # was 3
         [0, 1, 0, 0,
@@ -102,6 +104,10 @@ class Score(object):
     """用來記錄盤勢，存在於每個NODE與global中
     player: 0 = enemy, 1 = self
     """
+    
+    #計算上限 (必須是 unity 端 Max 的一半)
+    limit = 10000
+    
     def __init__(self, copyFrom = None):
         '''set pattern to zero array'''
         if copyFrom is None:
@@ -110,7 +116,7 @@ class Score(object):
         else:
             # 複製一份現存的 Score 物件
             self.blackScore = deepcopy(copyFrom.blackScore)
-            self.whiteScore =deepcopy(copyFrom.whiteScore)
+            self.whiteScore = deepcopy(copyFrom.whiteScore)
     
     def Get(self, selfIsBlack = True): 
         """回傳敵我分數"""
@@ -127,6 +133,7 @@ class Score(object):
             return (float)(self.whiteScore / (self.blackScore + self.whiteScore))
         
     def Add(self, patternList, playerNum = -1, selfIsBlack = None):
+        #*print
         # print('Score add, score = {}/{}'.format(self.blackScore,self.whiteScore))
         """傳入pattern = [enemypat, selfPat]，紀錄到Score裡面
         
@@ -141,8 +148,11 @@ class Score(object):
         #! playerNum : black = 0, white = 1
         # 傳入 playerNum 或 selfIsBlack
         pattern = np.array(patternList, dtype=np.float32)
+        
+        
+        # 決定自己的分數要放在 black 或 white
         if playerNum == 0 or selfIsBlack:
-            # 如果一次連成大量 pattern 會有額外 combe 分數
+            # 如果一次連成大量 pattern 會有額外 combe 分數 ( 自己 * np.sum(pattern[1]) )
             self.blackScore += np.dot(pattern[1],  np.array(JudgeArray.judge_score, dtype=np.float32)) * np.sum(pattern[1])
             self.whiteScore -= np.dot(np.matmul(pattern[0], np.array(JudgeArray.pastPattern, dtype=np.float32)), np.array(JudgeArray.block_score, dtype=np.float32))
             # print(f'b + {np.dot(pattern[1], JudgeArray.judge_score)}, w - {np.dot(np.matmul(pattern[0], JudgeArray.pastPattern), JudgeArray.block_score)}')
@@ -150,16 +160,20 @@ class Score(object):
             self.blackScore -= np.dot(np.matmul(pattern[0], np.array(JudgeArray.pastPattern, dtype=np.float32)), np.array(JudgeArray.block_score, dtype=np.float32))
             self.whiteScore += np.dot(pattern[1], np.array(JudgeArray.judge_score, dtype=np.float32)) * np.sum(pattern[1])
             # print(f'b - {np.dot(np.matmul(pattern[0], JudgeArray.pastPattern), JudgeArray.block_score)}, w + {np.dot(pattern[1], JudgeArray.judge_score)}')
-        limit = 1000
-        if self.blackScore > limit or self.whiteScore > limit:
-            self.blackScore = 2 * limit * self.blackScore / (self.blackScore + self.whiteScore)
-            self.whiteScore = 2 * limit - self.blackScore
+        
+        # 上限
+        if self.blackScore > self.limit or self.whiteScore > self.limit:
+            self.blackScore = 2 * self.limit * self.blackScore / (self.blackScore + self.whiteScore)
+            self.whiteScore = 2 * self.limit - self.blackScore
 
-#? 尚未採用 AIMemory
 class AIMemory(object):
-    """AI會記得他自己進攻的位置，避免被玩家誤導
+    """AI會記得他自己與對手進攻的位置，避免被玩家誤導
+    
+        selfLastLoc(list) -- 上次自己的進攻位置，使用類LSTM法判斷何時須忘記
+        enemyLastLoc(list) -- 敵人的上一步，每次更新
     """
-    lastLoc = []
+    selfLastLoc = []
+    enemyLastLoc = []
 
 class Judge(object):
     """評估器
@@ -186,7 +200,7 @@ class Judge(object):
             [[0, 0, 0, 0, 1, 1, 1, 1, 1], [0, 0, 0, 0, 0, 0, 0, 0, 0]],  # 五
             [[0, 0, 0, -1, 1, 1, 1, 1, -1], [0, 0, 0, -1, 0, 0, 0, 0, -1]],  # 活四
             [[0, 0, -1, -1, 1, 1, 1, -1, -1], [0, 0, 0, -1, 0, 0, 0, -1, 0]],  # 活三
-            # [[0,0,-1,-1, 1 ,1,1,-1,-1],[0,0,1,-1, 0 ,0,0,-1,1]], # 假活三(被夏止防守)
+            # [[0, 0, -1, -1, 1 ,1, 1, -1, -1], [0, 0, 1, -1, 0 , 0, 0, -1, 1]], # 假活三(被夏止防守)
             [[0, 0, -1, -1, 1, 1, -1, -1, 0], [0, 0, -1, -1, 0, 0, -1, -1, 0]]  # 活二
         ]
         # 圖形，包含移動前共有幾個
@@ -196,7 +210,26 @@ class Judge(object):
         # 圖形的分數
         #> 形成 5 = 10000, 4 = 600, 3 = 400, 2 = 100
         #> 阻擋 5 = 10000, 4 = 500, 3 = 300, 2 = 80
-        JudgeArray.pattern_score = [1000000, 80000, 400, 100]
+        # 組成 5/ 4/ 3/ 2
+        JudgeArray.pattern_score = [1000000, 80000, 400, 40]
+        
+        #* 對稱圖形
+        # 對稱圖形，包含移動前共有幾個
+        JudgeArray.pattern_mirror_total_appear_times = [3, 1, 2, 4, 2, 1, 2, 2, 1, 1, 3, 1, 2, 2]
+        # 對稱圖形的分數
+        # 組成                             跳四(長邊), 跳四(短邊), 跳四(中間), 死四, 
+        JudgeArray.pattern_mirror_score = [510, 510, 510, 550, 
+                                           # 跳三(長邊), 跳三(短邊), 跳三(長邊死,長邊), 跳三(短邊死,長邊), 
+                                           380, 380, 350, 350, 
+                                           # 跳三(長邊死,短邊),跳三(短邊死,短邊),死三,
+                                           350, 350, 350, 
+                                           # 跳二,弱活二,死二
+                                           30, 20, 10]
+        
+        # 滿足對稱圖形所需的激活分數
+        JudgeArray.pattern_mirror_esti = [4, 4, 4, 5, 3, 3, 4, 4, 4, 4, 4, 2, 3, 3]
+        
+        
         # 無法只靠平移檢測的圖形
         JudgeArray.pattern_mirror = [
                 [[0, 0, 0, -9, 1, 1, 1, -9, 1],[0, 0, 0, 0, 0, 0, 0, -9, 0]],  # 跳四(長邊)
@@ -209,17 +242,11 @@ class Judge(object):
                 [[0, 0, -9, -9, 1, 1, -9, 1, -9],[0, 0, 0, -9, 0, 0, -9, 0, 1]],  # 跳三(短邊死, 長邊)
                 [[0, 0, -9, -9, 1, -9, 1, 1, -9], [0, 0, 0, -9, 0, -9, 0, 0, 1]],  # 跳三(長邊死, 短邊)
                 [[0, 0, -9, -9, 1, -9, 1, 1, -9],[0, 0, 0, 1, 0, -9, 0, 0, -9]],  # 跳三(短邊死, 短邊)
-                [[0, 0, -9, -9, 1, 1, 1, -9, 0], [0, 0, 0, -9, 0, 0, 0, 1, 0]],  # 死三
+                [[0, 0, -9, -9, 1, 1, 1, -9, 0], [0, 0, -9, -9, 0, 0, 0, 1, 0]],  # 死三
                 [[0, 0, 0, -9, 1, -9, 1, -9, 0], [0, 0, 0, -9, 0, -9, 0, -9, 0]],  # 跳二
                 [[0, 0, -9, -9, 1, 1, -9, -9, 0],[0, 0, -9, -9, 0, 0, -9, 1, 0]],  # 比較弱的活二(單面開)
                 [[0, 0, -9, -9, 1, 1, -9, -9, 0], [0, -9, -9, -9, 0, 0, 1, 0, 0]]  # 死二
         ]
-        # 對稱圖形，包含移動前共有幾個
-        JudgeArray.pattern_mirror_total_appear_times = [3, 1, 2, 4, 2, 1, 2, 2, 1, 1, 3, 1, 2, 2]
-        # 對稱圖形的分數
-        JudgeArray.pattern_mirror_score = [510, 510, 510, 550, 380, 380, 350, 350, 350, 350, 350, 90, 90, 40]
-        # 滿足對稱圖形所需的激活分數
-        JudgeArray.pattern_mirror_esti = [4, 4, 4, 5, 3, 3, 4, 4, 4, 4, 4, 2, 3, 3]
 
         # 每個圖形對應的名稱，用於debug
         JudgeArray.pattern_name = ['五連', '活四', '活三', '活二',
@@ -254,9 +281,9 @@ class Judge(object):
             # print('try to load file...', end=' ')
             
             # pattern 達成後的分數
-            #// JudgeArray.judge_score = np.load('judge_score.npy')
             JudgeArray.judge_score = JudgeArray.pattern_score + JudgeArray.pattern_mirror_score
-            JudgeArray.block_score = [500, 300, 80, 20] # 阻擋分數
+            # 阻擋分數
+            JudgeArray.block_score = [500, 300, 40, 0] # 阻擋分數
             
             # 判斷 pattern 的矩陣
             JudgeArray.judge_array = np.load('judge_array.npy')
@@ -275,7 +302,6 @@ class Judge(object):
             # 初始化
             JudgeArray.judge_array = []
             JudgeArray.judge_weight = []
-            #// JudgeArray.judge_score = []
             JudgeArray.flattern = 0
 
             # 非對稱圖形
@@ -349,13 +375,12 @@ class Judge(object):
                 0, 1).swapaxes(1, 2)
 
             np.save('judge_array.npy', JudgeArray.judge_array)
-            #// np.save('judge_score.npy', JudgeArray.judge_score)
             np.save('judge_weight.npy', JudgeArray.judge_weight)
             np.save('judge_flattern.npy', JudgeArray.flattern)
             # print("Evaluate matrix done.")
                 
 
-    #@jit(forceobj=True,nopython=True)
+    #@jit(forceobj=True)
     def force_nined(self, board, loc):
         """Input a location, return a 9*1 list. If the list ins't big enough(out of board), let white fill 0 and black fill 1  """
 
@@ -387,13 +412,6 @@ class Judge(object):
     def Solve(self, board_init, loc):
         """針對單一位置做評估，回傳 [破壞對手形狀 與 達成己方形狀]，運算時的改動不會影響到傳入的矩陣"""
         
-        """
-        * 在 AISolve 已經處裡
-        loc[0], loc[1] = loc[1], loc[0]
-        loc[0] = len(board_init[0]) - loc[0]
-        loc[1] -= 1
-        """
-        
         board = deepcopy(board_init)
         # 儲存結果
         self.enemyValue = self.Analyze_self([board[1], board[0]], loc)
@@ -415,10 +433,6 @@ class Judge(object):
 
     def AI_Solve(self, board, last_loc, score, judge, alphaIsBlack):
         """遍歷所有附近有棋子的點，找出最佳落子位置"""
-        last_loc[0], last_loc[1] = last_loc[1], last_loc[0]
-        last_loc[0] = len(board[0]) - last_loc[0]
-        last_loc[1] -= 1
-        
         from pruning_tree import alpha_beta_tree, Node
         #! board = [player, AI]
         tree = alpha_beta_tree(board, enemyLastLoc = last_loc, deep = const.deep, score = score, judge = judge, alphaIsBlack = alphaIsBlack)
@@ -427,12 +441,15 @@ class Judge(object):
 
     def AddSolveRange(self, board, loc):
         """在loc處放置棋子後，更新 self.solvePoint & self.solveRange 並回傳新的 [[pos 1],[pos 2],...] """
-                
-        for x in range(loc[0]-2, loc[0]+3):
-            for y in range(loc[1]-2, loc[1]+3):
+        #* 現在的做法是只取 [最後落子位置附近的4格內] 範圍
+        #* 取代了以前 [所有棋子附近2格的範圍] 的做法
+        self.solveRange = []
+        # loc
+        for x in range(loc[0]-4, loc[0]+5):
+            for y in range(loc[1]-4, loc[1]+5):
                 try:
                     if x >= 0 and y >= 0 :
-                        if self.solvePoint[x][y] == 0:
+                        if self.solvePoint[x][y] == 0 and board[0][x][y] == 0 and board[1][x][y] == 0 and [x, y] != loc:
                             self.solvePoint[x][y] = 1
                             self.solveRange.insert(0, [x, y])
                 except IndexError:
@@ -499,7 +516,7 @@ if __name__ == '__main__':
     for i in range(0, len(JudgeArray.pattern_name)):
         if detect[0][i] >= 1:
             print("{}:{}".format(
-                judge.pattern_name[i], (int)(detect[0][i])))
+                JudgeArray.pattern_name[i], (int)(detect[0][i])))
     print("達成了:")
     for i in range(0, len(JudgeArray.pattern_name)):
         if detect[1][i] >= 1:

@@ -83,6 +83,24 @@ public class BoardClick : MonoBehaviour
 		board.GetComponent<Image>().color = boardColor;
 	}
 
+	public void SummonChess(Vector2 loc)
+	{
+		GameObject chess;
+		if (isBlack)
+		{
+			chess = Instantiate(black_chess, touchpad.transform);
+		}
+		else
+		{
+			chess = Instantiate(white_chess, touchpad.transform);
+		}
+		chess.transform.SetParent(touchpad.transform);
+		chess.GetComponent<RectTransform>().localPosition = loc * unit_chess.GetComponent<RectTransform>().rect.width - touchpad.GetComponent<RectTransform>().rect.size / 2 + unit_chess.GetComponent<RectTransform>().rect.size / 2;
+
+		isBlack = !isBlack;
+		ShowPlayerTurn();
+	}
+
 	/////////////////////////private/////////////////////////////////
 	void Click()
 	{
@@ -96,24 +114,6 @@ public class BoardClick : MonoBehaviour
 			Socket_Client.GetComponent<Socket_Client>().pl_move(pos);
 			SummonChess(pos);
 		}
-	}
-
-	void SummonChess(Vector2 loc)
-	{
-		GameObject chess;
-		if (isBlack)
-		{
-			chess = Instantiate(black_chess, touchpad.transform);
-		}
-		else
-		{
-			chess = Instantiate(white_chess, touchpad.transform);
-		}
-		chess.transform.SetParent(touchpad.transform);
-		chess.GetComponent<RectTransform>().localPosition = loc * unit_chess.GetComponent<RectTransform>().rect.width - touchpad.GetComponent<RectTransform>().rect.size / 2 + unit_chess.GetComponent<RectTransform>().rect.size / 2;
-		
-		isBlack = !isBlack;
-		ShowPlayerTurn();
 	}
 
 	void ShowPlayerTurn()

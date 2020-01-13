@@ -64,9 +64,11 @@ public class Socket_Client : MonoBehaviour
 		JSONObject jsonObject = obj.data;
 		string rcv = jsonObject.GetField("loc").str;
 		Debug.Log("ai_move : " + rcv);
+		Vector2 loc = new Vector2( float.Parse(rcv.Split(',')[1]), float.Parse(rcv.Split(',')[0]));//loc 和 pos 的 xy 是相反的
+		boardClick.GetComponent<BoardClick>().SummonChess(loc);
 	}
 
-	void ReceiveJudge(SocketIOEvent obj)//伺服器處理完畢，允許玩家落子
+	void ReceiveJudge(SocketIOEvent obj)//伺服器處理完畢，顯示判斷結果
 	{
 		JSONObject jsonObject = obj.data;
 		string rcv_e = jsonObject.GetField("enemy_value").str;
