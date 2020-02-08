@@ -9,6 +9,10 @@ BlockingThread = True
 
 from game_engine import *
 
+import pickle
+from mcts_alphaZero import MCTSPlayer
+from policy_value_net_keras import PolicyValueNet  # Keras
+
 # 評估器
 from evaluate_points import Judge, JudgeArray, Score, AIMemory
 
@@ -221,7 +225,7 @@ class Client(object):
 
     def __str__(self):
         return "Human {}".format(self.player)
-
+'''
 class AI_ABTree(object):
     """
     human player, at Client
@@ -268,20 +272,26 @@ class AI_ABTree(object):
 
     def __str__(self):
         return "Human {}".format(self.player)
-
+'''
 def run():
     n = 5
     width, height = 13,13
+    model_file = 'current_policy_13_13_5.model'
     try:
         global winner, game, BlockingThread
         board = Board(width=width, height=height, n_in_row=n)
         game = Game(board)
 
+        # USE ML
+        best_policy = PolicyValueNet(width, height, model_file = model_file)
+        mcts_player = MCTSPlayer(best_policy.policy_value_fn, c_puct=5, n_playout=400)
+        ###
+        
         while True:
             BlockingThread = True # blocking
             print("new game starts")
             # set start_player=0 for human first
-            winner = game.start_play(Client(), AI_ABTree(), start_player=0, is_shown=0)
+            winner = game.start_play(Client(), mcts_player, start_player=0, is_shown=0)
             has_winner(winner)
             eventlet.sleep(1)
             print("game end")
