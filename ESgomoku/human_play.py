@@ -7,7 +7,6 @@ Input your move in the format: 2,3
 """
 
 from __future__ import print_function
-import pickle
 from game import Board, Game
 from mcts_pure import MCTSPlayer as MCTS_Pure
 from mcts_alphaZero import MCTSPlayer
@@ -48,8 +47,8 @@ class Human(object):
 
 def run():
     n = 5
-    width, height = 13, 13
-    model_file = 'current_policy_13_13_5.model'
+    width, height = 9, 9
+    model_file = './n400/current_model_9_9_5_f.h5'
     try:
         board = Board(width=width, height=height, n_in_row=n)
         game = Game(board)
@@ -73,7 +72,7 @@ def run():
                                  n_playout=400)  # set larger n_playout for better performance
         """
         # uncomment the following line to play with pure MCTS (it's much weaker even with a larger n_playout)
-        # mcts_player = MCTS_Pure(c_puct=5, n_playout=1000)
+        #mcts_player = MCTS_Pure(c_puct=5, n_playout=3000)
 
         # human player, input your move in the format: 2,3
         human = Human()

@@ -20,7 +20,7 @@ class Board(object):
         # need how many pieces in a row to win
         self.n_in_row = int(kwargs.get('n_in_row', 5))
         self.players = [1, 2]  # player1 and player2
-
+        
     def init_board(self, start_player=0):
         if self.width < self.n_in_row or self.height < self.n_in_row:
             raise Exception('board width and height can not be '
@@ -72,6 +72,7 @@ class Board(object):
                             self.last_move % self.height] = 1.0
         if len(self.states) % 2 == 0:
             square_state[3][:, :] = 1.0  # indicate the colour to play
+                   
         return square_state[:, ::-1, :]
 
     def do_move(self, move):

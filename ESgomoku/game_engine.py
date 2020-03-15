@@ -3,8 +3,8 @@ import numpy as np
 
 class const():
     #default
-    default_width = 13
-    default_height = 13
+    default_width = 9
+    default_height = 9
     default_n_in_row = 5
 
     #nn input
@@ -74,7 +74,7 @@ class Board(object):
         state shape: ( const.num_of_input_array )*width*height
         """
 
-        square_state = np.zeros(const.num_of_input_array, self.width, self.height)
+        square_state = np.zeros((const.num_of_input_array , self.width, self.height))
         if self.states:
             moves, players = np.array(list(zip(*self.states.items())))
             move_curr = moves[players == self.current_player]
@@ -182,7 +182,7 @@ class Game(object):
                     print('{}{}{}'.format(const.space,const.empty_place,const.space), end='')
             print('\r\n')
 
-    def start_play(self, player1, player2, start_player=0, is_shown=1):
+    def start_play(self, player1, player2, start_player=0, is_shown=1, send_step = None):
         """start a game between two players"""
         if start_player not in (0, 1):
             raise Exception('start_player should be either 0 (player1 first) '
@@ -201,6 +201,10 @@ class Game(object):
                 player_in_turn = players[current_player]
                 move = player_in_turn.get_action(self.board)
                 self.board.do_move(move)
+                
+                if player_in_turn.tag == 'AI':
+                    send_step(f'{int((move - move % const.default_width) /const.default_width)},{move % const.default_width}')
+                
                 if is_shown:
                     self.graphic(self.board, player1.player, player2.player)
                 end, winner = self.board.game_end()

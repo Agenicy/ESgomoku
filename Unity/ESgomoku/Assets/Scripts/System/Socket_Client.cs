@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using SocketIO;
 using System.Threading;
 
+
 public class Socket_Client : MonoBehaviour
 {
 
@@ -64,7 +65,7 @@ public class Socket_Client : MonoBehaviour
 		JSONObject jsonObject = obj.data;
 		string rcv = jsonObject.GetField("loc").str;
 		Debug.Log("ai_move : " + rcv);
-		Vector2 loc = new Vector2( float.Parse(rcv.Split(',')[1]), float.Parse(rcv.Split(',')[0]));//loc 和 pos 的 xy 是相反的
+		Vector2 loc = new Vector2(float.Parse(rcv.Split(',')[1]), float.Parse(rcv.Split(',')[0]));//loc 和 pos 的 xy 是相反的
 		boardClick.GetComponent<BoardClick>().SummonChess(loc);
 	}
 
@@ -94,7 +95,7 @@ public class Socket_Client : MonoBehaviour
 		analyze_text.GetComponent<Text>().text = value;
 		string rcv_Bvalue = jsonObject.GetField("blackScore").str;
 		string rcv_Wvalue = jsonObject.GetField("whiteScore").str;
-		potential.GetComponent<Slider>().value =  float.Parse(rcv_Bvalue);
+		potential.GetComponent<Slider>().value = float.Parse(rcv_Bvalue);
 		potential.GetComponent<Slider>().maxValue = float.Parse(rcv_Bvalue) + float.Parse(rcv_Wvalue);
 	}
 

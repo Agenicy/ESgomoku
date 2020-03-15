@@ -1,7 +1,7 @@
-import cupy as np
-#import numpy as np
+import numpy as np
 
 from policy_value_net_keras import PolicyValueNet  # Keras
+from mcts_alphaZero import MCTSPlayer
 
 class ML_AI(object):
     """
@@ -17,14 +17,9 @@ class ML_AI(object):
     def get_action(self, board):
         print("AI's turn")
         try:
-            policy_param = pickle.load(open(model_file, 'rb'))
-        except:
-            policy_param = pickle.load(open(model_file, 'rb'),
-                                       encoding='bytes')  # To support python3
-        best_policy = PolicyValueNetNumpy(width, height, policy_param)
-        mcts_player = MCTSPlayer(best_policy.policy_value_fn,
-                                 c_puct=5,
-                                 n_playout=400)  # set larger n_playout for better performance
+            model_file = './current_model_13_13_5.h5'
+            best_policy = PolicyValueNet(13, 13, model_file = model_file)
+            mcts_player = MCTSPlayer(best_policy.policy_value_fn, c_puct=5, n_playout=400)
 
         except Exception as e:
             print(e)

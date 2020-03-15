@@ -9,18 +9,18 @@ BlockingThread = True
 
 from game_engine import *
 
-import pickle
 from mcts_alphaZero import MCTSPlayer
 from policy_value_net_keras import PolicyValueNet  # Keras
 
 # 評估器
 from evaluate_points import Judge, JudgeArray, Score, AIMemory
 
-judge = Judge(13)
+#judge = Judge(13)
+judge = Judge(9)
 score = None
 
 chess_graph = [[],[]]
-chess_graph_width = 13
+chess_graph_width = 9# 13
 for i in range(0,chess_graph_width):
     chess_graph[0].append([0]*chess_graph_width)
     chess_graph[1].append([0]*chess_graph_width)
@@ -94,12 +94,12 @@ def send_step(location):
     Arguments:
         location {string}} -- 'x,y' 格式的字串
     """
-    print(f'send_step: {location}')   
+    print(f'send step: {location}')   
     sio.emit(
         'ai_move', 
         data = {'loc':location}, 
         skip_sid=True) 
-    eventlet.sleep(0)
+    eventlet.sleep(1)
 
 # 冠軍出爐
 def has_winner(winner): 
@@ -124,7 +124,7 @@ def pl_move(sid, data):
 def call_player():
     sio.emit(
         'pl_turn', 
-        data = {}, 
+        data = {}, # location = AI move (format: '5,5')
         skip_sid=True) 
     eventlet.sleep(0)
 
@@ -137,6 +137,7 @@ def wait_client():
     else:
         ret = loc.pop(0) # loc
         after_get_loc(ret)
+        
         return ret
 
 def after_get_loc(loc):
@@ -202,6 +203,7 @@ class Client(object):
 
     def __init__(self):
         self.player = None
+        self.tag = 'Client'
 
     def set_player_ind(self, p):
         self.player = p
@@ -275,8 +277,8 @@ class AI_ABTree(object):
 '''
 def run():
     n = 5
-    width, height = 13,13
-    model_file = 'current_policy_13_13_5.model'
+    width, height = 9,9
+    model_file = './current_model_9_9_5_f.h5'
     try:
         global winner, game, BlockingThread
         board = Board(width=width, height=height, n_in_row=n)
@@ -291,7 +293,7 @@ def run():
             BlockingThread = True # blocking
             print("new game starts")
             # set start_player=0 for human first
-            winner = game.start_play(Client(), mcts_player, start_player=0, is_shown=0)
+            winner = game.start_play(Client(), mcts_player, start_player=0, is_shown=1, send_step = send_step)
             has_winner(winner)
             eventlet.sleep(1)
             print("game end")

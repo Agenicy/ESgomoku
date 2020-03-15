@@ -9,7 +9,6 @@ network to guide the tree search and evaluate the leaf nodes
 import numpy as np
 import copy
 
-
 def softmax(x):
     probs = np.exp(x - np.max(x))
     probs /= np.sum(probs)
@@ -175,6 +174,7 @@ class MCTSPlayer(object):
                  c_puct=5, n_playout=2000, is_selfplay=0):
         self.mcts = MCTS(policy_value_function, c_puct, n_playout)
         self._is_selfplay = is_selfplay
+        self.tag = 'AI'
 
     def set_player_ind(self, p):
         self.player = p
@@ -216,3 +216,4 @@ class MCTSPlayer(object):
 
     def __str__(self):
         return "MCTS {}".format(self.player)
+

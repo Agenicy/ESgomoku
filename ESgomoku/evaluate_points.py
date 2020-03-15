@@ -10,7 +10,7 @@ from keras.layers import Conv2D
 from game_engine import const
 
 # 加速器
-from numba import jit
+#from numba import jit
 
 from copy import deepcopy
 
