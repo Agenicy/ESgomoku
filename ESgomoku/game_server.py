@@ -15,12 +15,11 @@ from policy_value_net_keras import PolicyValueNet  # Keras
 # 評估器
 from evaluate_points import Judge, JudgeArray, Score, AIMemory
 
-#judge = Judge(13)
-judge = Judge(9)
+judge = Judge(13)
 score = None
 
 chess_graph = [[],[]]
-chess_graph_width = 9# 13
+chess_graph_width = 13
 for i in range(0,chess_graph_width):
     chess_graph[0].append([0]*chess_graph_width)
     chess_graph[1].append([0]*chess_graph_width)
@@ -277,8 +276,8 @@ class AI_ABTree(object):
 '''
 def run():
     n = 5
-    width, height = 9,9
-    model_file = './current_model_9_9_5_f.h5'
+    width, height = 13, 13
+    model_file = './current_model_13_13_5.h5'
     try:
         global winner, game, BlockingThread
         board = Board(width=width, height=height, n_in_row=n)
