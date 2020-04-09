@@ -81,10 +81,10 @@ class solver():
             self.GenData()
             self.Train()
             self.i += 1
-        self.Test(-200,-10)
-        self.Test(-200,60)
-        self.Test(-240,0)
-        self.Test(-150,-70)
+        self.Calc(-200,-10)
+        self.Calc(-200,60)
+        self.Calc(-240,0)
+        self.Calc(-150,-70)
     
     def GenData(self):
         print('GenData')
@@ -132,13 +132,17 @@ class solver():
         self.model.save('./model.h5')
         
     
-    def Test(self,x_in,y_in):
+    def Calc(self,x_in,y_in,show = True):
         res = self.model.predict(np.array([[x_in,y_in]]), batch_size=1)[0]
         t = res[0]*180
         o = res[1]*180
         p = res[2]*180
         x, y = self.func(t,o,p)
-        print(f'target x = {x_in}, target y = {y_in}, x = {x}, y = {y}\n    solution = {t},{o},{p},\n    loss = {pow((x-x_in),2) + pow((y-y_in),2) }')
-    
-s = solver()
-s.run()
+        if show:
+            print(f'target x = {x_in}, target y = {y_in}, x = {x}, y = {y}\n    solution = {t},{o},{p},\n    loss = {pow((x-x_in),2) + pow((y-y_in),2) }')
+        return t, o, p
+
+
+if __name__ == "__main__":
+    s = solver()
+    s.Calc(-250,-70)
