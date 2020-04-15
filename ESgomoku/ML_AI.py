@@ -17,8 +17,8 @@ class ML_AI(object):
     def get_action(self, board):
         print("AI's turn")
         try:
-            model_file = './current_model_13_13_5.h5'
-            best_policy = PolicyValueNet(13, 13, model_file = model_file)
+            model_file = './best_model_9_9_5.h5'
+            best_policy = PolicyValueNet(9, 9, model_file = model_file)
             mcts_player = MCTSPlayer(best_policy.policy_value_fn, c_puct=5, n_playout=400)
 
         except Exception as e:

@@ -3,8 +3,8 @@ import numpy as np
 
 class const():
     #default
-    default_width = 13
-    default_height = 13
+    default_width = 9
+    default_height = 9
     default_n_in_row = 5
 
     #nn input

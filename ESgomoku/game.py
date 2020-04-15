@@ -5,7 +5,7 @@
 
 from __future__ import print_function
 import numpy as np
-
+from copy import deepcopy
 
 class Board(object):
     """board for the game"""
@@ -20,6 +20,8 @@ class Board(object):
         # need how many pieces in a row to win
         self.n_in_row = int(kwargs.get('n_in_row', 5))
         self.players = [1, 2]  # player1 and player2
+        
+        self.square_state3 = self.square_state4 = np.zeros((self.width, self.height))
         
     def init_board(self, start_player=0):
         if self.width < self.n_in_row or self.height < self.n_in_row:
@@ -58,7 +60,7 @@ class Board(object):
         state shape: 4*width*height
         """
 
-        square_state = np.zeros((4, self.width, self.height))
+        square_state = np.zeros((6, self.width, self.height))
         if self.states:
             moves, players = np.array(list(zip(*self.states.items())))
             move_curr = moves[players == self.current_player]
@@ -68,10 +70,14 @@ class Board(object):
             square_state[1][move_oppo // self.width,
                             move_oppo % self.height] = 1.0
             # indicate the last move location
+            square_state[4] = self.square_state4
+            square_state[3] = self.square_state3
             square_state[2][self.last_move // self.width,
                             self.last_move % self.height] = 1.0
+            self.square_state4 = deepcopy(square_state[3])
+            self.square_state3 = deepcopy(square_state[2])
         if len(self.states) % 2 == 0:
-            square_state[3][:, :] = 1.0  # indicate the colour to play
+            square_state[5][:, :] = 1.0  # indicate the colour to play
                    
         return square_state[:, ::-1, :]
 
@@ -188,7 +194,7 @@ class Game(object):
                         print("Game end. Tie")
                 return winner
 
-    def start_self_play(self, player, is_shown=0, temp=0.1):
+    def start_self_play(self, player, is_shown=0, temp=1e-3):
         """ start a self-play game using a MCTS player, reuse the search tree,
         and store the self-play data: (state, mcts_probs, z) for training
         """

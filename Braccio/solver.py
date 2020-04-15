@@ -7,6 +7,7 @@ from random import randint as rd
 from math import cos, sin, pi
 import tensorflow as tf
 import os
+import matplotlib.pyplot as plt
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True
@@ -33,80 +34,63 @@ class solver():
         
     def __init__(self):
         self.i = 0
-        self.batch_size = 32
+        self.batch_size = 1024
         model_file = './model.h5'
-        self.batch = 100
+        self.batch = 10
         if os.path.exists(model_file):
             self.model = load_model(model_file) # , custom_objects={'my_loss':self.my_loss}
         else:
             self.CreateModel()
-        
-                    
-    def func(self, theta, omega, phi, A=125.0, B=125.0, C=195.0):
-        if type(theta) is tf.Tensor:
-            x = y = tf.constant(0.0)
-            ang = theta
-            angr = (ang/tf.constant(180.0))*tf.constant(pi)
-            x += tf.constant(A) * tf.math.cos(angr)
-            y += tf.constant(A) * tf.math.sin(angr)
-            ang += omega -tf.constant(90.0)
-            angr = (ang/tf.constant(180.0))*tf.constant(pi)
-            x += tf.constant(B) * tf.math.cos(angr)
-            y += tf.constant(B) * tf.math.sin(angr)
-            ang += phi -tf.constant(90.0)
-            angr = (ang/tf.constant(180.0))*tf.constant(pi)
-            x += tf.constant(C) * tf.math.cos(angr)
-            y += tf.constant(C) * tf.math.sin(angr)
-            return x, y
+    
+    def cos(self,angle):
+        """range: 0 < angle < 180"""
+        angle = float(angle)
+        if angle > 90:
+            angle = 180 - angle
+            return -1*(32400-4*pow(angle,2))/(32400+pow(angle,2))
         else:
-            x = y = 0
-            ang = theta
-            angr = (ang/180)*pi
-            x += A * cos(angr)
-            y += A * sin(angr)
-            ang += omega -90
-            angr = (ang/180)*pi
-            x += B * cos(angr)
-            y += B * sin(angr)
-            ang += phi -90
-            angr = (ang/180)*pi
-            x += C * cos(angr)
-            y += C * sin(angr)
-            return x, y
+            return (32400-4*pow(angle,2))/(32400+pow(angle,2))
+    
+    def sin(self, angle):
+        """range: 0 < angle < 180"""
+        angle = float(angle)
+        return 4*angle*(180-angle)/(40500-angle*(180-angle))
+    
+    def func(self, theta, omega, phi, A=125.0, B=125.0, C=195.0):
+        x = y = 0
+        ang = theta
+        x += A * self.cos(ang)
+        y += A * self.sin(ang)
+        ang += omega -90
+        x += B * self.cos(ang)
+        y += B * self.sin(ang)
+        ang += phi -90
+        x += C * self.cos(ang)
+        y += C * self.sin(ang)
+        return x, y
     
     def run(self):
         self.Compile()
+        self.GenData()
         for i in range(self.batch):
-            print(f'i = {self.i}')
-            self.GenData()
+            print(f'i = {self.i}', end=' ')
             self.Train()
             self.i += 1
-        self.Calc(-200,-10)
-        self.Calc(-200,60)
-        self.Calc(-240,0)
-        self.Calc(-150,-70)
+        self.Calc(-150,-60)
+        self.Calc(-200,-60)
+        self.Calc(-250,-60)
+        self.Calc(-350,-60)
+        self.Calc(-380,-60)
+    
     
     def GenData(self):
         print('GenData')
         
         self.input = []
         self.output = []
-        """
-        col = 10000
-        for i in range(col):
-            # ----------------
-            theta = float(rd(15,165))
-            omega = float(rd(0,180))
-            phi = float(rd(0,180))
-            # ----------------
-            x, y = self.func(theta, omega, phi)
-            
-            self.input.append([float(int(x)),float(int(y))])
-            self.output.append([theta, omega, phi])
-            """
-        for theta in range(45,165,rd(5,9)):
-            for omega in range(91,180,rd(5,9)):
-                for phi in range(91,180,rd(5,9)):
+        for theta in range(45,165,2):
+            for omega in range(90,180,2):
+                for phi in range(90,180,2):
                     x, y = self.func(theta, omega, phi)
                     self.input.append([x, y])
                     self.output.append([theta/180, omega/180, phi/180])
@@ -118,8 +102,8 @@ class solver():
         print('Create Model')
         self.model = Sequential()
         self.model.add(Dense(units=128, activation='relu', input_dim=2))
-        self.model.add(Dense(units=256, activation='tanh'))
-        self.model.add(Dense(units=512, activation='relu', input_dim=2))
+        self.model.add(Dense(units=256, activation='relu'))
+        self.model.add(Dense(units=512, activation='tanh'))
         self.model.add(Dense(units=3, activation='sigmoid'))
         
     def Compile(self):
@@ -131,7 +115,6 @@ class solver():
         self.model.fit(self.input, self.output, epochs=20, batch_size=self.batch_size, verbose=0)
         self.model.save('./model.h5')
         
-    
     def Calc(self,x_in,y_in,show = True):
         res = self.model.predict(np.array([[x_in,y_in]]), batch_size=1)[0]
         t = res[0]*180
@@ -142,7 +125,51 @@ class solver():
             print(f'target x = {x_in}, target y = {y_in}, x = {x}, y = {y}\n    solution = {t},{o},{p},\n    loss = {pow((x-x_in),2) + pow((y-y_in),2) }')
         return t, o, p
 
+    def Varify(self):
+        print('Varify.')
+        loss_40 = [[],[]]
+        loss_60 = [[],[]]
+        loss_80 = [[],[]]
+        hor = [[0]]*56
+        x_range = range(-400,-120,5)
+        
+        def count(y, x_loss, y_loss):
+            for x in x_range:
+                res = self.model.predict(np.array([[x,y]]), batch_size=1)[0]
+                t = res[0]*180
+                o = res[1]*180
+                p = res[2]*180
+                x_pre, y_pre = self.func(t,o,p)
+                x_loss.append(x - x_pre)
+                y_loss.append(y - y_pre)
+        
+        count(-40, loss_40[0], loss_40[1])
+        count(-60, loss_60[0], loss_60[1])
+        count(-80, loss_80[0], loss_80[1])
+        
+        plt.plot(x_range,hor,color="black",linewidth=1)
+        plt.plot(x_range,loss_40[0],label='loss_40',color="red",linewidth=2)
+        plt.plot(x_range,loss_60[0],label='loss_60',color="green",linewidth=2)
+        plt.plot(x_range,loss_80[0],label='loss_80',color="blue",linewidth=2)
+        plt.xlabel("X")
+        plt.ylabel("X error")
+        plt.title("X Error")
+        plt.ylim(-10,10)
+        plt.legend()
+        plt.show()
+        
+        plt.plot(x_range,hor,color="black",linewidth=1)
+        plt.plot(x_range,loss_40[1],label='loss_40',color="red",linewidth=2)
+        plt.plot(x_range,loss_60[1],label='loss_60',color="green",linewidth=2)
+        plt.plot(x_range,loss_80[1],label='loss_80',color="blue",linewidth=2)
+        plt.xlabel("X")
+        plt.ylabel("Y error")
+        plt.title("Y Error")
+        plt.ylim(-10,10)
+        plt.legend()
+        plt.show()
 
 if __name__ == "__main__":
     s = solver()
-    s.Calc(-250,-70)
+    while True:
+        s.run()
