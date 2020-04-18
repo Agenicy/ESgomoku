@@ -71,7 +71,8 @@ class solver():
     
     def run(self):
         self.Compile()
-        self.GenData()
+        if self.input is None:
+            self.GenData()
         for i in range(self.batch):
             print(f'i = {self.i}', end=' ')
             self.Train()
