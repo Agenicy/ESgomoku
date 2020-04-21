@@ -31,10 +31,9 @@ class solver():
             loss = tf.add(loss, tf.math.abs(tf.math.subtract(x1, x2)) + tf.math.abs(tf.math.subtract(y1, y2)))
         return loss"""
         
-    def __init__(self):
+    def __init__(self, model_file = './model.h5'):
         self.i = 0
         self.batch_size = 32
-        model_file = './model.h5'
         self.batch = 100
         if os.path.exists(model_file):
             self.model = load_model(model_file) # , custom_objects={'my_loss':self.my_loss}
