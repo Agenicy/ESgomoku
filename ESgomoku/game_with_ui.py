@@ -66,7 +66,7 @@ class DataPlayer(object):
 
 def run():
     n = 5
-    width, height = 13,13
+    width, height = 9,9
     try:
         board = Board(width=width, height=height, n_in_row=n)
         game = Game(board)

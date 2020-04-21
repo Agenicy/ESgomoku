@@ -26,26 +26,6 @@ class job(threading.Thread):
         self.run = func
     
 class solver():
-<<<<<<< HEAD
-    """def my_loss(self, y_true, y_pred):
-        loss = tf.constant(0.0)
-        true = tf.unstack(y_true, num=self.batch_size)
-        pred = tf.unstack(y_pred, num=self.batch_size)
-        for i in range(len(true)):
-            t = true[i]
-            p = pred[i]
-            x1, y1 = self.func(t[0],t[1],t[2])
-            x2, y2 = self.func(p[0],p[1],p[2])
-            loss = tf.add(loss, tf.math.abs(tf.math.subtract(x1, x2)) + tf.math.abs(tf.math.subtract(y1, y2)))
-        return loss"""
-        
-    def __init__(self, model_file = './model.h5'):
-        self.i = 0
-        self.batch_size = 32
-        self.batch = 100
-        if os.path.exists(model_file):
-            self.model = load_model(model_file) # , custom_objects={'my_loss':self.my_loss}
-=======
     def __init__(self):
         self.i = 0
         self.batch_size = 128
@@ -55,7 +35,6 @@ class solver():
             self.model_theta = load_model(model_file[0])
             self.model_omega = load_model(model_file[1])
             self.model_phi = load_model(model_file[2])
->>>>>>> 3efd55dcc2d59b7794eb62a6be1f9c7b8d8297f7
         else:
             self.CreateModel()
         

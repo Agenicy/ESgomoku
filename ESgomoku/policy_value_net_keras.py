@@ -14,15 +14,15 @@ from keras.utils import np_utils
 import numpy as np
 
 import csv
-"""
+
 import tensorflow as tf
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 1.0
+#config.gpu_options.per_process_gpu_memory_fraction = 0.4
+config.gpu_options.allow_growth = True
 session = tf.Session(config=config)
-"""
 
 class PolicyValueNet():
-    """policy-value network 13_13_5"""
+    """policy-value network"""
     def __init__(self, board_width, board_height, model_file=None):
         self.board_width = board_width
         self.board_height = board_height 
@@ -38,7 +38,7 @@ class PolicyValueNet():
         
     def create_policy_value_net(self):
         """create the policy value network """   
-        in_x = network = Input((4, self.board_width, self.board_height))
+        in_x = network = Input((6, self.board_width, self.board_height))
 
         # conv layers
         network = Conv2D(filters=32, kernel_size=(3, 3), padding="same", data_format="channels_first", activation="relu", kernel_regularizer=l2(self.l2_const))(network)
@@ -69,7 +69,7 @@ class PolicyValueNet():
         """
         legal_positions = board.availables
         current_state = board.current_state()
-        act_probs, value = self.policy_value(current_state.reshape(-1, 4, self.board_width, self.board_height))
+        act_probs, value = self.policy_value(current_state.reshape(-1, 6, self.board_width, self.board_height))
         act_probs = zip(legal_positions, act_probs.flatten()[legal_positions])
         return act_probs, value[0][0]
 
@@ -80,7 +80,7 @@ class PolicyValueNet():
         """
 
         # get the train op   
-        opt = Adam()
+        opt = RMSprop()
         losses = ['categorical_crossentropy', 'mean_squared_error']
         self.model.compile(optimizer=opt, loss=losses)
 
