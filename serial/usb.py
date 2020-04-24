@@ -181,25 +181,23 @@ class usb():
     def UserSend(self, data=None, port='COM4'):
         self.Wait(port=port)
         try:
-            if self.client[port].state == 2:
-                word = []
-                if data is None:
-                    word = input(f'Enter Data, use dot(".") to seprate...').replace('\n','').split('.')
-                else:
-                    word = data
-                    
-                for i in range(len(word)):
-                    word[i] = int(word[i])
-                print('Get Your Command. Start Sending...')
-                self.Send(word, port)
+            word = []
+            if data is None:
+                word = input(f'Enter Data, use dot(".") to seprate...').replace('\n','').split('.')
+            else:
+                word = data
+                
+            for i in range(len(word)):
+                word[i] = int(word[i])
+            print('Get Your Command. Start Sending...')
+            self.Send(word, port)
         except Exception as e:
             print(e)
 
     def Wait(self, port = 'COM4'):
         sleep(0.5)
         while not self.client[port].state == 2:
-            print('USB waiting...')
-            sleep(0.5)
+            sleep(0.1)
         sleep(0.5)
         return None
 

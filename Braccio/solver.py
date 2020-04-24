@@ -37,11 +37,25 @@ class solver():
         
         def DrawColor(x, y, R, G, B):
             x, y, R, G, B = int(x), int(y), int(R), int(G), int(B)
-            draw.point([x,y],fill=(R, G, B, 255))
-            draw.point([x+1,y],fill=(R, G, B, 255))
-            draw.point([x-1,y],fill=(R, G, B, 255))
-            draw.point([x,y+1],fill=(R, G, B, 255))
-            draw.point([x,y-1],fill=(R, G, B, 255))
+            
+            def desicion(axis = list, angle = list, cover = False):
+                a,b,c,_ = im.getpixel((axis[0],axis[1]))
+                if cover and angle[0] < a :
+                    draw.point([axis[0],axis[1]],fill=(angle[0], angle[1], angle[2], 255))
+                elif _ == 0 or ( _==250 ):
+                    draw.point([axis[0],axis[1]],fill=(angle[0], angle[1], angle[2], 250))
+                    
+                    
+                    
+            desicion([x,y],angle=([R,G,B]), cover = True)
+            desicion([x+1,y],angle=([R,G,B]))
+            desicion([x-1,y],angle=([R,G,B]))
+            desicion([x,y+1],angle=([R,G,B]))
+            desicion([x,y-1],angle=([R,G,B]))
+            desicion([x+1,y+1],angle=([R,G,B]))
+            desicion([x+1,y-1],angle=([R,G,B]))
+            desicion([x-1,y+1],angle=([R,G,B]))
+            desicion([x-1,y-1],angle=([R,G,B]))
         
         for theta in range(15,165):
             for omega in range(90,180):
@@ -54,11 +68,11 @@ class solver():
         DrawColor(505, 500, 255, 0, 0)
         DrawColor(500, 505, 0, 255, 0)
         
-        im.save( "fileout.png")
+        im.save( os.path.dirname(os.path.abspath(__file__)) + "/fileout.png")
         
                 
     def Calc(self,x_in,y_in,show = True):
-        im = Image.open("fileout.png")
+        im = Image.open(os.path.dirname(os.path.abspath(__file__)) + "/fileout.png")
         
         x = x_in + 500
         y = y_in + 500
@@ -66,7 +80,7 @@ class solver():
         t, o, p, _ = im.getpixel((x,y))
         if _ == 0:
             print('No Solution')
-            return 0, 0, 0
+            return 0,0,0
         x, y = self.func(t,o,p)
         
         if show:
