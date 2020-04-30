@@ -15,13 +15,14 @@ class camera():
         self.h = 640
         self.border = 50  # resize border px
         self.M = None
-        self.color_sensitive = 0
+        self.color_sensitive = 20
+        
 
         self.point = []
         for i in range(1, 10):
             for j in range(1, 10):
                 self.point.append((i*self.border, j*self.border))
-                
+               
 
     # 定义旋转rotate函数
     def rotate(self, img, angle, center=None, scale=1.0):
@@ -49,9 +50,8 @@ class camera():
         ret, img = self.cam.read()
         img = self.rotate(img, -90)
         #! camera 區域
-        img = img[:, 80:-80]
+        img = img[:, 100:-100]
         img = cv2.resize(img, (self.pict_size, self.pict_size))
-        img[:] = 0.9 * img[:]
         return img
 
     def detect_border(self, blur_gray):
@@ -60,7 +60,7 @@ class camera():
         high_threshold = 150
         edges = cv2.Canny(blur_gray, low_threshold, high_threshold)
         return edges
-
+    
     def resize(self, img):
         # 將圖片轉為灰階
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -91,9 +91,16 @@ class camera():
                 self.M = cv2.getPerspectiveTransform(corner, to)
     
     def get_board(self, img):
-        blur_gray = cv2.GaussianBlur(
-            img, (self.kernel_size, self.kernel_size), 0)
-        contours, hierarchy = cv2.findContours(blur_gray, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        gray = img
+        
+        blur_gray = cv2.GaussianBlur(gray, (self.kernel_size, self.kernel_size), 0)
+        edges = self.detect_border(blur_gray)
+        contours, hierarchy = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        cv2.drawContours(gray, contours, -1, (0, 0, 0), 2)
+        
+        cv2.imshow('b',gray)
+        contours, hierarchy = cv2.findContours(gray,  cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        
         
         if len(contours) >=1:
             
@@ -107,7 +114,7 @@ class camera():
             to = np.float32([[self.border, self.border], [self.border, self.pict_size-self.border], [
                             self.pict_size-self.border, self.pict_size-self.border], [self.pict_size-self.border, self.border]])
 
-            if len(corner) == 4:
+            if len(corner) > 4:
                 # 取得變形公式
                 self.M = cv2.getPerspectiveTransform(corner, to)
                
@@ -120,28 +127,26 @@ class camera():
                 self.resize(img)
             
             dst = cv2.warpPerspective(img, self.M, (self.pict_size, self.pict_size))
-            cv2.imshow('blurdst', dst)
             blur = cv2.blur(dst, (64, 64))
             least.append(min(blur[0].tolist()))
             most.append(max(blur[0].tolist()))
             
-            cv2.imshow('blur', blur)
             
         least = np.array(min(least))
         most = np.array(max(most))
-        
         least[:] = least[:] - self.color_sensitive
         most[:] = most[:] + self.color_sensitive
-            
+        
         while True:
             img = self.getImg()
             mask = cv2.inRange(img, least, most)
-            #mask[:] = 255 - mask[:]
+            mask[:] = 255 - mask[:]
             
             try:
                 self.get_board(mask)
+                
                 # 透視變形
-                dst = cv2.warpPerspective(mask, self.M, (self.pict_size, self.pict_size))
+                dst = cv2.warpPerspective(img, self.M, (self.pict_size, self.pict_size))
                 
                 """
                 # draw points
@@ -155,7 +160,6 @@ class camera():
                 
                 cv2.imshow('result', img)
                 cv2.imshow('resize', dst)
-                cv2.imshow('mask', mask)
                 
             except Exception as e:
                 print(e)
