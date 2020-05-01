@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
-
-
+import time
 class camera():
     def __init__(self, url='http://127.0.0.1:4747/mjpegfeed'):
         super().__init__()
@@ -9,11 +8,12 @@ class camera():
         self.cam = cv2.VideoCapture(url)
 
         self.kernel_size = 5
-
+        
         self.pict_size = 700
         self.w = 480
         self.h = 640
         self.border = 50  # resize border px
+        self.BoardArea = 0 # founded board area
 
         self.point = []
         for i in range(3, 12):
@@ -85,8 +85,11 @@ class camera():
                 to = np.float32([[self.border, self.border], [self.border, self.pict_size-self.border], [
                                 self.pict_size-self.border, self.pict_size-self.border], [self.pict_size-self.border, self.border]])
 
-                # 取得變形公式
-                self.M = cv2.getPerspectiveTransform(corner, to)
+                if self.BoardArea*0.9 <= cv2.contourArea(corner):
+                    # 取得變形公式
+                    self.M = cv2.getPerspectiveTransform(corner, to)
+                    self.BoardArea = cv2.contourArea(corner)
+                    self.board_corner = self.board_area
             except:
                 pass
 
@@ -95,8 +98,14 @@ class camera():
             img = self.getImg()
 
             cv2.imshow('result', img)
+            
             self.resize(img)
-
+            
+            while self.M is None:
+                self.resize(img)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
+            
             # 透視變形
             dst = cv2.warpPerspective(
                 img, self.M, (self.pict_size, self.pict_size))
@@ -108,6 +117,10 @@ class camera():
                 cv2.circle(dst, point, 5, (0, 0, 255), thickness=-1)
 
             cv2.drawContours(img, self.board_area, -1, (255, 0, 0), 3)
+            try:
+                cv2.drawContours(img, self.board_corner, -1, (0, 255, 0), 3)
+            except:
+                pass
             cv2.imshow('result', img)
             cv2.imshow('resize', dst)
 
@@ -119,13 +132,22 @@ class camera():
 
         self.resize(img)
 
+        while self.M is None:
+            self.resize(img)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+            
         if self.M is not None:
             # 透視變形
             dst = cv2.warpPerspective(
                 img, self.M, (self.pict_size, self.pict_size))
 
             cv2.drawContours(img, self.board_area, -1, (255, 0, 0), 3)
-        return img, dst
+            
+            dst = cv2.GaussianBlur(
+                dst, (self.kernel_size, self.kernel_size), 0)
+            
+            return img, dst
 
 
 if __name__ == "__main__":
