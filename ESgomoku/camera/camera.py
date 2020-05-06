@@ -2,10 +2,12 @@ import cv2
 import numpy as np
 import time
 class camera():
-    def __init__(self, url='http://127.0.0.1:4747/mjpegfeed'):
+    def __init__(self, url='http://127.0.0.1:4747/mjpegfeed', angle = -90):
         super().__init__()
         # 開啟網路攝影機
         self.cam = cv2.VideoCapture(url)
+        
+        self.angle = angle
 
         self.kernel_size = 5
         
@@ -45,7 +47,7 @@ class camera():
     def getImg(self):
         """ 從攝影機取得圖片"""
         ret, img = self.cam.read()
-        img = self.rotate(img, -90)
+        img = self.rotate(img, self.angle)
         #! camera 區域
         img = img[:, 80:-80]
         img = cv2.resize(img, (self.pict_size, self.pict_size))

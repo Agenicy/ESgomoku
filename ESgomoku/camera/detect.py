@@ -1,6 +1,8 @@
 import cv2
 import time
 import numpy as np
+
+
 class detect():
     def __init__(self, points=9, outline = 3):
         super().__init__()
@@ -9,6 +11,13 @@ class detect():
         unitH = 50
         self.color_black = [100,100,100]
         self.color_white = [180,220,230]
+        
+        self.vis = [[0]*points]*points
+        self.count = 0 # numbers of chess now
+        
+        self.memory = [] # board-changed that founded
+        self.confidence = 0.0 # confidence of board changed
+        self.conf_trigger = 5 # trigger num of confdence
         
         self.points = points
         self.pos = []
@@ -19,12 +28,10 @@ class detect():
     def analyze(self, dst):
         """取得當前棋盤所有落子位置"""
         black, white, dotList = self.getDot(dst)
-        dotChange, changed = self.getChange(dotList)
-        """
-        if changed:
-            return self.dotListToString(dotChange)
-        """
-        print(np.array(dotList))
+        dotChange, color = self.getChange(dotList)
+        if color != 0:
+            print(f'Step {self.count}: { {1:"black",2:"white"}.get(color) } {dotChange}')
+            #return self.dotListToString(dotChange)
         
     def getDot(self, img):
         def isChess(color):
@@ -74,13 +81,41 @@ class detect():
             
         return black, white, vis
 
-    def getChange(self, dot):
-        
+    def getChange(self, dot = list):
+        """return dotChange, changed"""
+        find = [0,0]
+        find_num = 0
+        for x in range(self.points):
+            for y in range(self.points):
+                if dot[x][y] != self.vis[x][y]:
+                    find[0] = x
+                    find[1] = y
+                    color = dot[x][y]
+                    find_num += 1
+                    
+        if find_num != 1:
+            return find, 0
+        else:
+            if self.memory == find:
+                if self.confidence >= self.conf_trigger:
+                    # very sure
+                    self.vis = dot
+                    self.count += 1
+                    return find, color
+                else:
+                    # more sure
+                    self.confidence += 1
+                    return find, 0
+            else:
+                # change my mind
+                self.memory = find
+                self.confidence = 0
+                return find, 0
 
 if __name__ == "__main__":
     from camera import camera
     import cv2
-    cam = camera()
+    cam = camera(url = 'http://127.0.0.1:4747/mjpegfeed', angle = -90)
     det = detect()
     while True:
         im, d = cam.getDst()

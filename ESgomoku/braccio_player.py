@@ -4,6 +4,7 @@ from usb import usb
 from solver import solver
 from time import sleep
 from math import sqrt, atan, pi
+import numpy as np
 
 # 常數修正項 ------------------------------------------------------
 port = 'COM5'
@@ -51,17 +52,15 @@ def LocToRec(loc = list):
     
     return r, ang # 弳度轉弧度
     
-
 # -----------------------------------------------------------------
-
+testMode = True
 s = solver()
 u = usb()
-u.AddClient(port, 9600, show = True)
+u.AddClient(port, 9600, show = True, testMode = testMode)
 u.Run()
-
-
 u.UserSend(data = waiting_action, port = port)
-while True:
+
+def catch():
     # 夾棋子 --------------------------------------------------------------------
     prepare = MakeData(x = -150, y= y_board_chess ,ang = 90, catch = 0)
     u.UserSend(data = prepare, port = port)
@@ -76,6 +75,75 @@ while True:
     u.UserSend(data = MakeData(x = -150, y= 0 ,ang = 90, catch = 1), port = port)
     u.Wait(port=port)
     # --------------------------------------------------------------------------
+
+from mcts_alphaZero import MCTS, TreeNode, softmax
+class BraccioPlayer(object):
+    """AI player based on MCTS, act wuth braccio"""
+
+    def __init__(self, policy_value_function,
+                 c_puct=5, n_playout=2000, is_selfplay=0):
+        self.mcts = MCTS(policy_value_function, c_puct, n_playout)
+        self._is_selfplay = is_selfplay
+        self.tag = 'AI'
+
+    def set_player_ind(self, p):
+        self.player = p
+
+    def reset_player(self):
+        self.mcts.update_with_move(-1)
+
+    def get_action(self, board, temp=1e-3, return_prob=0):
+        sensible_moves = board.availables
+        # the pi vector returned by MCTS as in the alphaGo Zero paper
+        move_probs = np.zeros(board.width*board.height)
+        if len(sensible_moves) > 0:
+            acts, probs = self.mcts.get_move_probs(board, temp)
+            move_probs[list(acts)] = probs
+            if self._is_selfplay:
+                # add Dirichlet Noise for exploration (needed for
+                # self-play training)
+                move = np.random.choice(
+                    acts,
+                    p=0.75*probs + 0.25*np.random.dirichlet(0.3*np.ones(len(probs)))
+                )
+                # update the root node and reuse the search tree
+                self.mcts.update_with_move(move)
+            else:
+                # with the default temp=1e-3, it is almost equivalent
+                # to choosing the move with the highest prob
+                move = np.random.choice(acts, p=probs)
+                # reset the root node
+                self.mcts.update_with_move(-1)
+#                location = board.move_to_location(move)
+#                print("AI move: %d,%d\n" % (location[0], location[1]))
+
+            def move_to_location(move):
+                """
+                3*3 board's moves like:
+                6 7 8
+                3 4 5
+                0 1 2
+                and move 5's location is (1,2)
+                """
+                h = move // 9
+                w = move % 9
+                return [h, w]
+            
+            print('braccio move: {}'.format(move_to_location(move)))
+
+            if return_prob:
+                return move, move_probs
+            else:
+                return move
+        else:
+            print("WARNING: the board is full")
+
+    def __str__(self):
+        return "MCTS {}".format(self.player)
+
+while __name__ == '__main__':
+    
+    catch()
     
     word = input(f'Enter Data, use dot(".") to seprate...').replace('\n','').split('.')
     pos = [int(word[1]),int(word[0])]

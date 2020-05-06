@@ -15,7 +15,7 @@ from mcts_alphaZero import MCTSPlayer
 # from policy_value_net_pytorch import PolicyValueNet  # Pytorch
 # from policy_value_net_tensorflow import PolicyValueNet # Tensorflow
 from policy_value_net_keras import PolicyValueNet  # Keras
-
+from braccio_player import BraccioPlayer
 
 class Human(object):
     """
@@ -48,7 +48,7 @@ class Human(object):
 def run():
     n = 5
     width, height = 9, 9
-    model_file = './current_model_9_9_5.h5'
+    model_file = './best_model_9_9_5.h5'
     try:
         board = Board(width=width, height=height, n_in_row=n)
         game = Game(board)
@@ -57,9 +57,10 @@ def run():
         # load the trained policy_value_net in either Theano/Lasagne, PyTorch or TensorFlow
 
         best_policy = PolicyValueNet(width, height, model_file = model_file)
-        mcts_player = MCTSPlayer(best_policy.policy_value_fn, c_puct=5, n_playout=400)
+        mcts_player = BraccioPlayer(best_policy.policy_value_fn, c_puct=5, n_playout=400)
 
-        # load the provided model (trained in Theano/Lasagne) into a MCTS player written in pure numpy
+        # load the provided model (trained in Theano/Lasagne)
+        #  into a MCTS player written in pure numpy
         """
         try:
             policy_param = pickle.load(open(model_file, 'rb'))
