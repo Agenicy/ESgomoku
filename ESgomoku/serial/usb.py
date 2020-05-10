@@ -98,7 +98,8 @@ class client(threading.Thread):
             # ACK
             self.state = 2
             self.dataBuffer.clear()
-            print('ACK')
+            if self.show:
+                print('ACK')
         elif client_state == 5:
             self.state = 3
             print('NAK')
@@ -192,7 +193,8 @@ class usb():
                 
             for i in range(len(word)):
                 word[i] = int(word[i])
-            print('Get Your Command. Start Sending...')
+                
+            # print('Get Your Command. Start Sending...')
             self.Send(word, port)
         except Exception as e:
             print(e)
@@ -228,7 +230,7 @@ class Dummy(threading.Thread):
 
     def run(self):
         while True:
-            sleep(0.3)
+            sleep(0)
             if self.state == 1:
                 self.WaitForJoin()
                 
@@ -265,7 +267,7 @@ class Dummy(threading.Thread):
             self.state = 2
         else:
             self.ResetClient()
-            sleep(0.3)
+            sleep(0)
            
     def WaitingForUserSend(self):
         self.singal.wait()
@@ -279,9 +281,11 @@ class Dummy(threading.Thread):
                 self.Send(len(self.dataBuffer))
                 if self.GetData() == 3:
                     self.state = 4
-                    print('start sending')
+                    if self.show:
+                        print('start sending')
                 else:
-                    print('nak')
+                    if self.show:
+                        print('nak')
          
     def SendBatch(self):
         """ client in state 4, start sending data"""
@@ -292,16 +296,18 @@ class Dummy(threading.Thread):
             # ACK
             self.state = 2
             self.dataBuffer.clear()
-            print('ACK')
+            if self.show:
+                print('ACK')
         elif client_state == 5:
             self.state = 3
-            print('NAK')
+            if self.show:
+                print('NAK')
         else:
             print(f'[Warning]: {client_state}')
     
     # ---------------------------------------------------------------------
     def GetData(self, cmd=None, time = 0.3):
-        sleep(randint(1,5))
+        sleep(0)
         return cmd if not cmd is None else 3
 
     def Send(self, data):

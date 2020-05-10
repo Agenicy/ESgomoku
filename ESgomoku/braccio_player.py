@@ -56,7 +56,7 @@ def LocToRec(loc = list):
 testMode = True
 s = solver()
 u = usb()
-u.AddClient(port, 9600, show = True, testMode = testMode)
+u.AddClient(port, 9600, show = False, testMode = testMode)
 u.Run()
 u.UserSend(data = waiting_action, port = port)
 
@@ -92,7 +92,7 @@ class BraccioPlayer(object):
     def reset_player(self):
         self.mcts.update_with_move(-1)
 
-    def get_action(self, board, temp=1e-3, return_prob=0):
+    def get_action(self, board, temp=1e-2, return_prob=0):
         sensible_moves = board.availables
         # the pi vector returned by MCTS as in the alphaGo Zero paper
         move_probs = np.zeros(board.width*board.height)
@@ -130,6 +130,8 @@ class BraccioPlayer(object):
                 return [h, w]
             
             print('braccio move: {}'.format(move_to_location(move)))
+            
+            self.Action(move_to_location(move))
 
             if return_prob:
                 return move, move_probs
@@ -141,16 +143,32 @@ class BraccioPlayer(object):
     def __str__(self):
         return "MCTS {}".format(self.player)
 
+    def Action(self, loc = list):
+        """落子"""
+        catch()
+    
+        pos = [int(loc[1]),int(loc[0])]
+        r, ang = LocToRec(pos)
+        
+        serial = MakeData(x = -r, y= y_board ,ang = ang, catch = 1)
+        serial2 = MakeData(x = -r, y= y_board ,ang = ang, catch = 0)
+        end_action = MakeData(x = -r, y= 0 ,ang = ang, catch = 0)
+        
+        if serial != False:
+            u.UserSend(data = serial, port = port)
+            u.Wait(port=port)
+            u.UserSend(data = serial2, port = port)
+            u.Wait(port=port)
+            u.UserSend(data = end_action, port = port)
+            u.Wait(port=port)
+        u.UserSend(data = waiting_action, port = port)
+    
+
 while __name__ == '__main__':
-    
     catch()
-    
     word = input(f'Enter Data, use dot(".") to seprate...').replace('\n','').split('.')
     pos = [int(word[1]),int(word[0])]
-    print(pos)
     r, ang = LocToRec(pos)
-    print(r)
-    print(ang)
     
     serial = MakeData(x = -r, y= y_board ,ang = ang, catch = 1)
     serial2 = MakeData(x = -r, y= y_board ,ang = ang, catch = 0)

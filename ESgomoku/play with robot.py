@@ -16,6 +16,9 @@ from mcts_alphaZero import MCTSPlayer
 # from policy_value_net_tensorflow import PolicyValueNet # Tensorflow
 from policy_value_net_keras import PolicyValueNet  # Keras
 from braccio_player import BraccioPlayer
+from camera.detect import detect
+from camera.camera import camera
+import cv2, time
 
 class Human(object):
     """
@@ -43,6 +46,42 @@ class Human(object):
 
     def __str__(self):
         return "Human {}".format(self.player)
+
+class Client(object):
+    """
+    human player
+    """
+    def __init__(self):
+        self.player = None
+        cam = camera(url = 'http://127.0.0.1:4747/mjpegfeed', angle = -90)
+        self.det = detect(cam)
+
+    def set_player_ind(self, p):
+        self.player = p
+
+    def get_action(self, board):
+        try: 
+            color, loc = self.det.getLoc()
+            while color != self.player:
+                print(color)
+                color, loc = self.det.getLoc()
+            
+            print(loc)
+            location = loc
+            if isinstance(location, str):  # for python3
+                location = [int(n, 10) for n in location.split(",")]
+            move = board.location_to_move(location)
+        except Exception as e:
+            print(e)
+            move = -1
+        if move == -1 or move not in board.availables:
+            print("invalid move")
+            move = self.get_action(board)
+        return move
+
+    def __str__(self):
+        return "Human {}".format(self.player)
+    
 
 
 def run():
@@ -76,7 +115,7 @@ def run():
         #mcts_player = MCTS_Pure(c_puct=5, n_playout=3000)
 
         # human player, input your move in the format: 2,3
-        human = Human()
+        human = Client()
 
         # set start_player=0 for human first
         game.start_play(human, mcts_player, start_player=1, is_shown=1)

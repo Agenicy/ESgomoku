@@ -2,9 +2,10 @@ import cv2
 import time
 import numpy as np
 
+import cv2
 
 class detect():
-    def __init__(self, points=9, outline = 3):
+    def __init__(self, camera, points=9, outline = 3):
         super().__init__()
         
         unitW = 50
@@ -19,11 +20,29 @@ class detect():
         self.confidence = 0.0 # confidence of board changed
         self.conf_trigger = 5 # trigger num of confdence
         
+        self.cam = camera
+        
         self.points = points
         self.pos = []
         for x in range(outline, points + outline):
             for y in range(outline, points + outline):
                 self.pos.append([unitW * x, unitH * y])
+
+    def getLoc(self):
+        while True:
+            im, d = self.cam.getDst()
+            d = cv2.blur(d,(8, 8))
+            cv2.imshow('result', d)
+            color, loc = self.analyze(d)
+            if not color is None:
+                loc[0], loc[1] = loc[1], loc[0]
+                return color, loc
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+            nowTime = time.time()
+            while time.time() - nowTime < 0.1:
+                # block
+                im, d = self.cam.getDst()
 
     def analyze(self, dst):
         """取得當前棋盤所有落子位置"""
@@ -31,7 +50,9 @@ class detect():
         dotChange, color = self.getChange(dotList)
         if color != 0:
             print(f'Step {self.count}: { {1:"black",2:"white"}.get(color) } {dotChange}')
-            #return self.dotListToString(dotChange)
+            return color, dotChange
+        else:
+            return None, [-1,-1]
         
     def getDot(self, img):
         def isChess(color):
@@ -116,10 +137,11 @@ if __name__ == "__main__":
     from camera import camera
     import cv2
     cam = camera(url = 'http://127.0.0.1:4747/mjpegfeed', angle = -90)
-    det = detect()
+    det = detect(cam)
     while True:
         im, d = cam.getDst()
         d = cv2.blur(d,(8, 8))
+        cv2.imshow('original', im)
         cv2.imshow('result', d)
         det.analyze(d)
         if cv2.waitKey(1) & 0xFF == ord('q'):
