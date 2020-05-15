@@ -1,7 +1,9 @@
 import cv2
 import numpy as np
 import time
-class camera():
+import threading
+
+class camera(threading.Thread):
     def __init__(self, url='http://127.0.0.1:4747/mjpegfeed', angle = -90):
         super().__init__()
         # 開啟網路攝影機
@@ -22,6 +24,7 @@ class camera():
             for j in range(3, 12):
                 self.point.append((i*self.border, j*self.border))
         self.M = None
+        self.pict = []
 
     # 定义旋转rotate函数
     def rotate(self, img, angle, center=None, scale=1.0):
@@ -97,62 +100,51 @@ class camera():
 
     def run(self):
         while True:
-            img = self.getImg()
+            try:
+                img = self.getImg()
 
-            cv2.imshow('result', img)
-            
-            self.resize(img)
-            
-            while self.M is None:
+                #cv2.imshow('result', img)
+                
                 self.resize(img)
+                
+                while self.M is None:
+                    img = self.getImg()
+
+                    cv2.imshow('result', img)
+                    self.resize(img)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
+                
+                # 透視變形
+                dst = cv2.warpPerspective(
+                    img, self.M, (self.pict_size, self.pict_size))
+                """
+                # draw points
+                for point in [(5*self.border, 5*self.border), (9*self.border, 9*self.border), (5*self.border, 9*self.border), (9*self.border, 5*self.border), (7*self.border, 7*self.border)]:
+                    cv2.circle(dst, point, 8, (0, 255, 255), thickness=-1)
+                for point in self.point:
+                    cv2.circle(dst, point, 5, (0, 0, 255), thickness=-1)
+                """
+
+                cv2.drawContours(img, self.board_area, -1, (255, 0, 0), 3)
+                try:
+                    cv2.drawContours(img, self.board_corner, -1, (0, 255, 0), 3)
+                except:
+                    pass
+                #cv2.imshow('result', img)
+                #cv2.imshow('resize', dst)
+                
+                self.pict = [img, dst]
+
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
-            
-            # 透視變形
-            dst = cv2.warpPerspective(
-                img, self.M, (self.pict_size, self.pict_size))
-
-            # draw points
-            for point in [(5*self.border, 5*self.border), (9*self.border, 9*self.border), (5*self.border, 9*self.border), (9*self.border, 5*self.border), (7*self.border, 7*self.border)]:
-                cv2.circle(dst, point, 8, (0, 255, 255), thickness=-1)
-            for point in self.point:
-                cv2.circle(dst, point, 5, (0, 0, 255), thickness=-1)
-
-            cv2.drawContours(img, self.board_area, -1, (255, 0, 0), 3)
-            try:
-                cv2.drawContours(img, self.board_corner, -1, (0, 255, 0), 3)
-            except:
-                pass
-            cv2.imshow('result', img)
-            cv2.imshow('resize', dst)
-
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+            except Exception as e:
+                print(e)
 
     def getDst(self):
-        img = self.getImg()
-
-        self.resize(img)
-
-        while self.M is None:
-            self.resize(img)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-            
-        if self.M is not None:
-            # 透視變形
-            dst = cv2.warpPerspective(
-                img, self.M, (self.pict_size, self.pict_size))
-
-            cv2.drawContours(img, self.board_area, -1, (255, 0, 0), 3)
-            
-            dst = cv2.GaussianBlur(
-                dst, (self.kernel_size, self.kernel_size), 0)
-            
-            return img, dst
-
+        return self.pict[0], self.pict[1]
+        
 
 if __name__ == "__main__":
-    cam = camera()
-    cam.run()
-    cam.close()
+    cam = camera(url = 'http://192.168.137.41:4747/mjpegfeed', angle = 0)
+    cam.start()

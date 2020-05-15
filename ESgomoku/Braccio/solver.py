@@ -73,11 +73,11 @@ class solver():
                 
     def Calc(self,x_in,y_in,show = True):
         im = Image.open(os.path.dirname(os.path.abspath(__file__)) + "/fileout.png")
-        
         x = x_in + 500
         y = y_in + 500
         
         t, o, p, _ = im.getpixel((x,y))
+        
         if _ == 0:
             print('No Solution')
             return 0,0,0

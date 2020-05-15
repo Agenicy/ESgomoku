@@ -32,8 +32,11 @@ class detect():
         while True:
             im, d = self.cam.getDst()
             d = cv2.blur(d,(8, 8))
-            cv2.imshow('result', d)
             color, loc = self.analyze(d)
+            ims = cv2.resize(im,(320,320))
+            ds = cv2.resize(d,(320,320))
+            cv2.imshow('original', ims)
+            cv2.imshow('result', ds)
             if not color is None:
                 loc[0], loc[1] = loc[1], loc[0]
                 return color, loc
@@ -43,12 +46,13 @@ class detect():
             while time.time() - nowTime < 0.1:
                 # block
                 im, d = self.cam.getDst()
-
+    
     def analyze(self, dst):
         """取得當前棋盤所有落子位置"""
         black, white, dotList = self.getDot(dst)
         dotChange, color = self.getChange(dotList)
         if color != 0:
+            self.count += 1
             print(f'Step {self.count}: { {1:"black",2:"white"}.get(color) } {dotChange}')
             return color, dotChange
         else:
@@ -121,7 +125,6 @@ class detect():
                 if self.confidence >= self.conf_trigger:
                     # very sure
                     self.vis = dot
-                    self.count += 1
                     return find, color
                 else:
                     # more sure
@@ -136,20 +139,9 @@ class detect():
 if __name__ == "__main__":
     from camera import camera
     import cv2
-    cam = camera(url = 'http://127.0.0.1:4747/mjpegfeed', angle = -90)
+    cam = camera(url = 'http://192.168.137.41:4747/mjpegfeed', angle = -90)
+    cam.start()
     det = detect(cam)
+    time.sleep(1)
     while True:
-        im, d = cam.getDst()
-        d = cv2.blur(d,(8, 8))
-        cv2.imshow('original', im)
-        cv2.imshow('result', d)
-        det.analyze(d)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-        
-        nowTime = time.time()
-        
-        while time.time() - nowTime < 0.1:
-            im, d = cam.getDst()
-        
-    cv2.destroyAllWindows()
+        print(det.getLoc())

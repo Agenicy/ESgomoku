@@ -53,8 +53,9 @@ class Client(object):
     """
     def __init__(self):
         self.player = None
-        cam = camera(url = 'http://127.0.0.1:4747/mjpegfeed', angle = -90)
+        cam = camera(url = 'http://192.168.137.41:4747/mjpegfeed', angle = -90)
         self.det = detect(cam)
+        cam.start()
 
     def set_player_ind(self, p):
         self.player = p
@@ -72,10 +73,11 @@ class Client(object):
                 location = [int(n, 10) for n in location.split(",")]
             move = board.location_to_move(location)
         except Exception as e:
-            print(e)
+            print('exeception found in "get action" with "{}"'.format(e))
             move = -1
         if move == -1 or move not in board.availables:
-            print("invalid move")
+            print("invalid move:{}".format(move))
+            time.sleep(10)
             move = self.get_action(board)
         return move
 
@@ -121,6 +123,7 @@ def run():
         game.start_play(human, mcts_player, start_player=1, is_shown=1)
     except KeyboardInterrupt:
         print('\n\rquit')
+    cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
