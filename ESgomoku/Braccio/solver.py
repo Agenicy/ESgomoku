@@ -38,15 +38,17 @@ class solver():
         def DrawColor(x, y, R, G, B):
             x, y, R, G, B = int(x), int(y), int(R), int(G), int(B)
             
+            def vert_loss(theta, omega, phi):
+                return abs(theta + omega + phi - 450)
+            
             def desicion(axis = list, angle = list, cover = False):
                 a,b,c,_ = im.getpixel((axis[0],axis[1]))
-                if cover and angle[0] < a :
-                    draw.point([axis[0],axis[1]],fill=(angle[0], angle[1], angle[2], 255))
-                elif _ == 0 or ( _==250 ):
-                    draw.point([axis[0],axis[1]],fill=(angle[0], angle[1], angle[2], 250))
-                    
-                    
-                    
+                if vert_loss(angle[0], angle[1], angle[2]) < 10:
+                    if cover and vert_loss(angle[0], angle[1], angle[2]) < vert_loss(a,b,c):
+                        draw.point([axis[0],axis[1]],fill=(angle[0], angle[1], angle[2], 255))
+                    elif _ == 0 or ( _ ==250 ):
+                        draw.point([axis[0],axis[1]],fill=(angle[0], angle[1], angle[2], 250))
+                        
             desicion([x,y],angle=([R,G,B]), cover = True)
             desicion([x+1,y],angle=([R,G,B]))
             desicion([x-1,y],angle=([R,G,B]))
