@@ -42,7 +42,7 @@ class solver():
             x, y, R, G, B = int(x), int(y), int(R), int(G), int(B)
             
             def vert_loss(theta, omega, phi):
-                return abs(theta + omega + phi - 450)
+                return abs(theta + omega + phi - 540 + (180 - 60))
             
             def desicion(axis = list, angle = list, cover = False):
                 a,b,c,_ = im.getpixel((axis[0],axis[1]))
@@ -75,8 +75,8 @@ class solver():
         DrawColor(505, 500, 255, 0, 0)
         DrawColor(500, 505, 0, 255, 0)
         
-        im.save( os.path.dirname(os.path.abspath(__file__)) + "/fileout.png")
-        loss.save( os.path.dirname(os.path.abspath(__file__)) + "/vertloss.png")
+        im.save( os.path.dirname(os.path.abspath(__file__)) + "/fileout60.png")
+        loss.save( os.path.dirname(os.path.abspath(__file__)) + "/loss60.png")
         
                 
     def Calc(self,x_in,y_in,show = True):
