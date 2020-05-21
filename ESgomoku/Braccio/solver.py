@@ -35,6 +35,9 @@ class solver():
         im = Image.new("RGBA", (1000, 1000), (0,0,0,0)) # x , y range
         draw = ImageDraw.Draw( im ) # painter color
         
+        loss = Image.new("RGBA", (1000, 1000), (0,0,0,0)) # x , y range
+        drawloss = ImageDraw.Draw( loss ) # painter color
+        
         def DrawColor(x, y, R, G, B):
             x, y, R, G, B = int(x), int(y), int(R), int(G), int(B)
             
@@ -43,11 +46,13 @@ class solver():
             
             def desicion(axis = list, angle = list, cover = False):
                 a,b,c,_ = im.getpixel((axis[0],axis[1]))
-                if vert_loss(angle[0], angle[1], angle[2]) < 10:
-                    if cover and vert_loss(angle[0], angle[1], angle[2]) < vert_loss(a,b,c):
-                        draw.point([axis[0],axis[1]],fill=(angle[0], angle[1], angle[2], 255))
-                    elif _ == 0 or ( _ ==250 ):
-                        draw.point([axis[0],axis[1]],fill=(angle[0], angle[1], angle[2], 250))
+                vl = vert_loss(angle[0], angle[1], angle[2])
+                if cover and vl < vert_loss(a,b,c):
+                    draw.point([axis[0],axis[1]],fill=(angle[0], angle[1], angle[2], 255))
+                    drawloss.point([axis[0],axis[1]],fill=(vl, vl, vl, 255))
+                elif _ == 0 or ( _ ==250 ):
+                    draw.point([axis[0],axis[1]],fill=(angle[0], angle[1], angle[2], 250))
+                    drawloss.point([axis[0],axis[1]],fill=(vl, vl, vl, 255))
                         
             desicion([x,y],angle=([R,G,B]), cover = True)
             desicion([x+1,y],angle=([R,G,B]))
@@ -71,6 +76,7 @@ class solver():
         DrawColor(500, 505, 0, 255, 0)
         
         im.save( os.path.dirname(os.path.abspath(__file__)) + "/fileout.png")
+        loss.save( os.path.dirname(os.path.abspath(__file__)) + "/vertloss.png")
         
                 
     def Calc(self,x_in,y_in,show = True):
