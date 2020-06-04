@@ -52,7 +52,7 @@ public class BoardClick : MonoBehaviour
 	// Start is called before the first frame update
 	void Start()
 	{
-		has_chess = new bool[13, 13];
+		has_chess = new bool[9, 9];
 		ShowPlayerTurn();
 	}
 
@@ -95,7 +95,8 @@ public class BoardClick : MonoBehaviour
 			chess = Instantiate(white_chess, touchpad.transform);
 		}
 		chess.transform.SetParent(touchpad.transform);
-		chess.GetComponent<RectTransform>().localPosition = loc * unit_chess.GetComponent<RectTransform>().rect.width - touchpad.GetComponent<RectTransform>().rect.size / 2 + unit_chess.GetComponent<RectTransform>().rect.size / 2;
+		//chess.GetComponent<RectTransform>().localPosition = loc * unit_chess.GetComponent<RectTransform>().rect.width - touchpad.GetComponent<RectTransform>().rect.size / 2 + unit_chess.GetComponent<RectTransform>().rect.size / 2;
+		chess.GetComponent<RectTransform>().localPosition = loc * unit_chess.GetComponent<RectTransform>().rect.width - touchpad.GetComponent<RectTransform>().rect.size / 2 + unit_chess.GetComponent<RectTransform>().rect.size;
 
 		isBlack = !isBlack;
 		ShowPlayerTurn();
@@ -104,8 +105,10 @@ public class BoardClick : MonoBehaviour
 	/////////////////////////private/////////////////////////////////
 	void Click()
 	{
-		Vector2 pos = new Vector2((int)((Input.mousePosition.x - (touchpad.transform.position.x - touchpad.GetComponent<RectTransform>().rect.width / 2)) / unit_chess.GetComponent<RectTransform>().rect.width), (int)((Input.mousePosition.y - (touchpad.transform.position.y - touchpad.GetComponent<RectTransform>().rect.height / 2)) / unit_chess.GetComponent<RectTransform>().rect.width));
-		if (0 <= pos.x && pos.x <= 13 && 0 <= pos.y && pos.y <= 13 && !has_chess[(int)pos.x, (int)pos.y])
+		//Vector2 pos = new Vector2((int)((Input.mousePosition.x - (touchpad.transform.position.x - touchpad.GetComponent<RectTransform>().rect.width / 2)) / unit_chess.GetComponent<RectTransform>().rect.width), (int)((Input.mousePosition.y - (touchpad.transform.position.y - touchpad.GetComponent<RectTransform>().rect.height / 2)) / unit_chess.GetComponent<RectTransform>().rect.width));
+		Vector2 pos = new Vector2((int)((Input.mousePosition.x - (touchpad.transform.position.x - touchpad.GetComponent<RectTransform>().rect.width / 2)- unit_chess.GetComponent<RectTransform>().rect.width/2 ) / unit_chess.GetComponent<RectTransform>().rect.width), (int)((Input.mousePosition.y - (touchpad.transform.position.y - touchpad.GetComponent<RectTransform>().rect.height / 2) - unit_chess.GetComponent<RectTransform>().rect.height / 2) / unit_chess.GetComponent<RectTransform>().rect.width));
+
+		if (0 <= pos.x && pos.x < 9 && 0 <= pos.y && pos.y < 9 && !has_chess[(int)pos.x, (int)pos.y])
 		{
 			ScreenClickedEventThrower.GetComponent<ScreenClickedEvent>().mode = "ai_round";//改成已經輸入
 

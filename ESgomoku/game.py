@@ -60,7 +60,8 @@ class Board(object):
         state shape: 4*width*height
         """
 
-        square_state = np.zeros((6, self.width, self.height))
+        # square_state = np.zeros((6, self.width, self.height))
+        square_state = np.zeros((4, self.width, self.height))
         if self.states:
             moves, players = np.array(list(zip(*self.states.items())))
             move_curr = moves[players == self.current_player]
@@ -70,12 +71,12 @@ class Board(object):
             square_state[1][move_oppo // self.width,
                             move_oppo % self.height] = 1.0
             # indicate the last move location
-            square_state[4] = self.square_state4
-            square_state[3] = self.square_state3
+            # square_state[4] = self.square_state4
+            # square_state[3] = self.square_state3
             square_state[2][self.last_move // self.width,
                             self.last_move % self.height] = 1.0
-            self.square_state4 = deepcopy(square_state[3])
-            self.square_state3 = deepcopy(square_state[2])
+            # self.square_state4 = deepcopy(square_state[3])
+            # self.square_state3 = deepcopy(square_state[2])
         if len(self.states) % 2 == 0:
             square_state[5][:, :] = 1.0  # indicate the colour to play
                    
