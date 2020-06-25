@@ -80,7 +80,7 @@ class solver():
         
                 
     def Calc(self,x_in,y_in,show = True):
-        im = Image.open(os.path.dirname(os.path.abspath(__file__)) + "/fileout.png")
+        im = Image.open(os.path.dirname(os.path.abspath(__file__)) + "/fileout60.png")
         x = x_in + 500
         y = y_in + 500
         
@@ -102,5 +102,3 @@ if __name__ == "__main__":
         s.GenData()
     else:
         select = select.split(' ')
-        s.Calc(-120, -100)
-        s.Calc(-400, -100)
