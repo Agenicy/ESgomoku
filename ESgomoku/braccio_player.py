@@ -15,23 +15,23 @@ block_length = 23.7 # 棋盤格子長度
 block_width = 23
 
 # 以下 板子正中央為 90 deg
-waiting_action = [30, 0, 64, 178, 179, 85, 40] # 落子後的待機位置
-waiting_action_chess = [30, 0, 64, 178, 179, 85, 65] # 落子後的待機位置
+waiting_action_pre = [30, 0, 64, 178, 179, 0, 20] # 落子後的待機位置
+waiting_action = [30, 0, 64, 178, 179, 0, 38] # 落子後的待機位置
 
 y_150 = 100 # 150.0時相對於基準面的高度
 y_400 = 145 # 400.0時相對於基準面的高度
-y_board = -93 # 落子的高度
+y_board = -93 + 25 # 落子的高度
 y_board_chess = -40 # 夾棋子的高度
 
 def y_function(x, y):
     return y - (x - (-150)) * (y_400 - y_150) / ((-400) - (-150)) # Δy - Δx * 修正函數(實驗求得)
 
-def MakeData(x, y,ang = 90,catch=0,time=20, vert = 85):
+def MakeData(x, y,ang = 90,catch=0,time=20):
     """將距離xy轉換為指令"""
     y = y_function(x, y)
     t, o, p = s.Calc(x, y)
     if t != 0:
-        return [time, ang, t, o, p, vert, 40 + catch*25 ]
+        return [time, ang, t, o, p, 180 - (180 * catch), 38]
     else:
         return False
 
@@ -72,19 +72,24 @@ s = solver()
 u = usb()
 u.AddClient(port, 9600, show = False, testMode = testMode)
 u.Run()
+u.UserSend(data = waiting_action_pre, port = port)
+u.Wait(port=port)
+a = input('install the claw and press enter:')
 u.UserSend(data = waiting_action, port = port)
+u.Wait(port=port)
 
 def catch():
     # 夾棋子 --------------------------------------------------------------------
     # move
-    prepare = MakeData(x = -150, y= y_board_chess ,ang = 0, catch = 0)
+    """
+    prepare = MakeData(x = -150, y= y_board_chess ,ang = 0, catch = 1)
     u.UserSend(data = prepare, port = port)
     u.Wait(port=port)
     sleep(1)
     # catch
-    prepare[0], prepare[6] = 10, 68
+    prepare[0], prepare[5] = 10, 68
     u.UserSend(data = prepare, port = port)
-    u.Wait(port=port)
+    u.Wait(port=port)"""
     # take up
     # prepare[0], prepare[3]= 10, 145
     # u.UserSend(data = prepare, port = port)
@@ -169,7 +174,7 @@ class BraccioPlayer(object):
         r, ang = LocToRec(loc)
         
         serial = MakeData(x = -r, y= y_board ,ang = ang, catch = 1)
-        serial2 = MakeData(x = -r, y= y_board ,ang = ang, catch = 0)
+        serial2 = MakeData(x = -r, y= y_board ,ang = ang, catch = 0, time = 10)
         end_action = MakeData(x = -r, y= 0 ,ang = ang, catch = 0)
         
         if serial != False:
@@ -188,7 +193,13 @@ if __name__ == '__main__':
         try:
             word = input(f'Enter Data (y, x), use dot(".") to seprate...').replace('\n','').split('.')
             loc = [int(word[0]), int(word[1])]
-            b.Action(loc)
+            if loc[0] == -1:
+                u.UserSend(data = waiting_action_pre, port = port)
+            else:
+                b.Action(loc)
         except Exception as e:
+            u.UserSend(data = waiting_action_pre, port = port)
+            u.Wait(port=port)
             print(e)
+            
     
