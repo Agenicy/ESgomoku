@@ -1,10 +1,4 @@
 # -*- coding: utf-8 -*-
-"""
-human VS AI models
-Input your move in the format: 2,3
-
-@author: Junxiao Song
-"""
 
 from __future__ import print_function
 from game import Board, Game

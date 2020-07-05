@@ -101,6 +101,7 @@ class MCTS(object):
         self._policy = policy_value_fn
         self._c_puct = c_puct
         self._n_playout = n_playout
+        self.probs = np.zeros((9,9))
 
     def _playout(self, state):
         """Run a single playout from the root to the leaf, getting a value at
@@ -135,7 +136,7 @@ class MCTS(object):
         # Update value and visit count of nodes in this traversal.
         node.update_recursive(-leaf_value)
 
-    def get_move_probs(self, state, temp=1e-3):
+    def get_move_probs(self, state, temp=1e-2):
         """Run all playouts sequentially and return the available actions and
         their corresponding probabilities.
         state: the current game state
@@ -149,8 +150,17 @@ class MCTS(object):
         act_visits = [(act, node._n_visits)
                       for act, node in self._root._children.items()]
         acts, visits = zip(*act_visits)
+        
         act_probs = softmax(1.0/temp * np.log(np.array(visits) + 1e-10))
-
+        
+        p = softmax(np.array(visits))
+        
+        self.probs = np.zeros((9,9))
+        for index in range(len(acts)):
+            self.probs[int(acts[index]%9)][int(acts[index]/9)] = round(p[index],4)
+        
+        print(self.probs)
+        
         return acts, act_probs
 
     def update_with_move(self, last_move):

@@ -46,27 +46,23 @@ def Reset():
 def on_connect(sid, environ):   
     global t, loc, BlockingThread
     print("connect ", sid)
-    if len(t) == 0:
-        print('new game.')
-        t.append(threading.Thread(target=run))
-        BlockingThread = True
-        t[0].start()
-    else:
-        Reset()
-        pass
+    print('new game.')
+    t.append(threading.Thread(target=run))
+    BlockingThread = True
+    t[0].start()
 
 # 斷開連結
 @sio.on('disconnect')
-def disconnect(sid):   
-    global game, t
-    print("disconnect ", sid)
+def disconnect(sid):
+    import sys   
+    sys.exit(0)
 
 @sio.on('restart')
 def restart(sid, data):    
     Reset()
 
 # 電腦落子
-def send_step(location): 
+def send_step(location, prob): 
     """傳遞location給unity
     
     Arguments:
@@ -75,7 +71,8 @@ def send_step(location):
     print(f'send step: {location}')   
     sio.emit(
         'ai_move', 
-        data = {'loc':location}, 
+        data = {'loc':location,
+                'prob':prob},
         skip_sid=True) 
     eventlet.sleep(1)
 
@@ -153,17 +150,18 @@ def run():
     n = 5
     width, height = 9,9
     model_file = './best_model_9_9_5.h5'
-    try:
-        global game, BlockingThread
-        board = Board(width=width, height=height, n_in_row=n)
-        game = Game(board)
+    #model_file = './current_model_9_9_5_f_50.h5'
+    global game, BlockingThread
+    board = Board(width=width, height=height, n_in_row=n)
+    game = Game(board)
 
-        # USE ML
-        best_policy = PolicyValueNet(width, height, model_file = model_file)
-        mcts_player = MCTSPlayer(best_policy.policy_value_fn, c_puct=5, n_playout=400)
-        ###
-        
-        while True:
+    # USE ML
+    best_policy = PolicyValueNet(width, height, model_file = model_file)
+    mcts_player = MCTSPlayer(best_policy.policy_value_fn, c_puct=5, n_playout=400)
+    ###
+    
+    while True:
+        try:
             BlockingThread = True # blocking
             print("new game starts")
             # set start_player=0 for human first
@@ -174,9 +172,10 @@ def run():
             while BlockingThread: # blocking
                 eventlet.sleep(2)
 
-    except KeyboardInterrupt:
-        print('\n\rquit')
+        except (SystemExit, KeyboardInterrupt):
+            break
 
 if __name__ == '__main__':
     app = socketio.Middleware(sio, app)
     eventlet.wsgi.server(eventlet.listen(('', 4567)), app)
+    

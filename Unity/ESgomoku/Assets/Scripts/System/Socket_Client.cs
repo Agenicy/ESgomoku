@@ -53,6 +53,16 @@ public class Socket_Client : MonoBehaviour
 		sio.On("winner", ReceiveWinner);
 	}
 
+	private void OnDestroy()
+	{
+		System.Diagnostics.ProcessStartInfo Info2 = new System.Diagnostics.ProcessStartInfo();
+
+		Info2.FileName = "kill_server.bat";//執行的檔案名稱
+		Info2.WorkingDirectory = @"./Assets/scripts/System";
+
+		System.Diagnostics.Process.Start(Info2);
+		Debug.Log("server closed!");
+	}
 
 	void OnConnect(SocketIOEvent obj)//連接成功
 	{
@@ -64,9 +74,15 @@ public class Socket_Client : MonoBehaviour
 	{
 		JSONObject jsonObject = obj.data;
 		string rcv = jsonObject.GetField("loc").str;
+		string rcv2 = jsonObject.GetField("prob").str;
+		Debug.Log("prob : " + rcv2);
+		rcv2 = rcv2.Replace("[","").Replace("]","").Replace(" ", "");
+
 		Debug.Log("ai_move : " + rcv);
+		Debug.Log("prob : " + rcv2);
 		Vector2 loc = new Vector2(float.Parse(rcv.Split(',')[1]), float.Parse(rcv.Split(',')[0]));//loc 和 pos 的 xy 是相反的
 		boardClick.GetComponent<BoardClick>().SummonChess(loc);
+		boardClick.GetComponent<BoardClick>().Show_Probs(rcv2);
 	}
 
 	void ReceiveJudge(SocketIOEvent obj)//伺服器處理完畢，顯示判斷結果
@@ -150,5 +166,6 @@ public class Socket_Client : MonoBehaviour
 		data["restart"] = "true";
 		sio.Emit("restart", new JSONObject(data));
 	}
+	
 
 }

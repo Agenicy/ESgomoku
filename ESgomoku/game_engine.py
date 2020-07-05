@@ -203,7 +203,14 @@ class Game(object):
                 self.board.do_move(move)
                 
                 if player_in_turn.tag == 'AI':
-                    send_step(f'{int((move - move % const.default_width) /const.default_width)},{move % const.default_width}')
+                    location = f'{int((move - move % const.default_width) /const.default_width)},{move % const.default_width}'
+                    
+                    ret_probs = ''
+                    for prob in player_in_turn.mcts.probs:
+                        for p in prob.tolist():
+                            ret_probs += f'{p},'
+                    
+                    send_step(location, ret_probs[:-1] )
                 
                 if is_shown:
                     self.graphic(self.board, player1.player, player2.player)
