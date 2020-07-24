@@ -52,7 +52,7 @@ class camera(threading.Thread):
         ret, img = self.cam.read()
         img = self.rotate(img, self.angle)
         #! camera 區域
-        img = img[:, 80:-80]
+        img = img[:, 60:-60]
         img = cv2.resize(img, (self.pict_size, self.pict_size))
         return img
 
@@ -68,6 +68,7 @@ class camera(threading.Thread):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         blur_gray = cv2.GaussianBlur(
             gray, (self.kernel_size, self.kernel_size), 0)
+        cv2.imshow('gray_blur', blur_gray)
         try:
             edges = self.detect_border(blur_gray)
         except:
@@ -131,8 +132,8 @@ class camera(threading.Thread):
                     cv2.drawContours(img, self.board_corner, -1, (0, 255, 0), 3)
                 except:
                     pass
-                #cv2.imshow('result', img)
-                #cv2.imshow('resize', dst)
+                cv2.imshow('result', img)
+                cv2.imshow('resize', dst)
                 
                 self.pict = [img, dst]
 
@@ -146,5 +147,5 @@ class camera(threading.Thread):
         
 
 if __name__ == "__main__":
-    cam = camera(url = 'http://192.168.137.41:4747/mjpegfeed', angle = 0)
+    cam = camera(url = 'http://192.168.137.12:4747/mjpegfeed', angle = 0)
     cam.start()

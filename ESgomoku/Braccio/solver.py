@@ -80,7 +80,7 @@ class solver():
         
                 
     def Calc(self,x_in,y_in,show = True):
-        im = Image.open(os.path.dirname(os.path.abspath(__file__)) + "/fileout60.png")
+        im = Image.open(os.path.dirname(os.path.abspath(__file__)) + "/fileout.png")
         x = x_in + 500
         y = y_in + 500
         
