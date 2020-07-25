@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 
 class detect():
-    def __init__(self, camera, points=9, outline = 3):
+    def __init__(self, camera, points=9, outline = 0):
         super().__init__()
         
         unitW = 50
@@ -90,10 +90,10 @@ class detect():
             for y in range(9):
                 pos = self.pos[x*9 + y]
                 color = np.array([img[int(pos[0]),int(pos[1])],
-                                  img[int(pos[0])+5,int(pos[1])+5],
-                                  img[int(pos[0])-5,int(pos[1])-5],
-                                  img[int(pos[0])-5,int(pos[1])+5],
-                                  img[int(pos[0])+5,int(pos[1])-5]])
+                                img[int(pos[0])+5,int(pos[1])+5],
+                                img[int(pos[0])-5,int(pos[1])-5],
+                                img[int(pos[0])-5,int(pos[1])+5],
+                                    img[int(pos[0])+5,int(pos[1])-5]])
                 color = np.mean(color, axis=0).tolist()
                 b, w = isChess(color)
                 line[0].append(b)
@@ -139,9 +139,12 @@ class detect():
 if __name__ == "__main__":
     from camera import camera
     import cv2
-    cam = camera(url = 'http://192.168.137.12:4747/mjpegfeed', angle = -90)
+    cam = camera(url = 'http://192.168.137.200:4747/mjpegfeed', angle = -90)
     cam.start()
     det = detect(cam)
     time.sleep(1)
     while True:
-        print(det.getLoc())
+        try:
+            print(det.getLoc())
+        except Exception as e:
+            print(e)

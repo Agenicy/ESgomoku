@@ -9,10 +9,9 @@ import numpy as np
 # 常數修正項 ------------------------------------------------------
 testMode = False
 port = 'COM4'
-x_offset = 150 # 棋盤中點左右偏差值 (絕對值)
-y_offset = 0 # 棋盤高度偏差值 (向上為正)
-block_length = 25 # 棋盤格子長度
-block_width = 25
+x_offset = 150 # 棋盤第一排中點左右偏差值 (絕對值)
+block_length = 259/9 # 棋盤格子長度
+block_width = block_length
 
 # 以下 板子正中央為 90 deg
 waiting_action = [30, 0, 64, 178, 179, 0, 38] # 落子後的待機位置
@@ -20,8 +19,8 @@ waiting_action = [30, 0, 64, 178, 179, 0, 38] # 落子後的待機位置
 y_center = 95 # 轉軸正中央相對於基準面的高度
 y_150 = 115 # 用0為基準修正，150.0時相對於基準面的高度
 y_400 = 155 # 用0為基準修正，400.0時相對於基準面的高度
-y_board = -93 + 25 # 落子的高度
-y_board_chess = -40 # 夾棋子的高度
+y_board = -93 + 20 # 落子的高度
+y_board_chess = -93 + 20 # 夾棋子的高度
 
 def y_function(x, y):
     return y - (x - (-150)) * (y_400 - y_150) / ((-400) - (-150)) - (y_150 - y_center) # Δy - Δx * 修正函數(實驗求得)
@@ -188,22 +187,15 @@ if __name__ == '__main__':
     b = BraccioPlayer(None)
     while True:
         try:
-            """
+            
             word = input(f'Enter Data (y, x), use dot(".") to seprate...').replace('\n','').split('.')
             loc = [int(word[0]), int(word[1])]
-            if loc[0] == -1:
-                u.UserSend(data = 
-                waiting_action_pre, port = port)
-            else:
-                b.Action(loc)
-                """
-            word = input(f'Enter Data (y, x, ang), use dot(".") to seprate...').replace('\n','').split('.')
-            """
-            nearest: -135.-50.90
-            """
-            u.UserSend(data = MakeData(x = int(word[0]), y= int(word[1]) ,ang = int(word[2]), catch = int(word[3])), port = port)
+            b.Action(loc)
+                
+            #word = input(f'Enter Data (y, x, ang), use dot(".") to seprate...').replace('\n','').split('.')
+            #u.UserSend(data = MakeData(x = int(word[0]), y= int(word[1]) ,ang = int(word[2]), catch = int(word[3])), port = port)
         except Exception as e:
-            u.UserSend(data = waiting_action_pre, port = port)
+            u.UserSend(data = waiting_action, port = port)
             u.Wait(port=port)
             print(e)
             
