@@ -16,7 +16,7 @@ class camera(threading.Thread):
         self.pict_size = 700
         self.w = 480
         self.h = 640
-        self.border = -30  # resize border px
+        self.border = 0  # resize border px
         self.BoardArea = 0 # founded board area (overrided) 
 
         self.point = []
@@ -113,7 +113,7 @@ class camera(threading.Thread):
                 while self.M is None:
                     img = self.getImg()
 
-                    cv2.imshow('finding M', img)
+                    #cv2.imshow('finding M', img)
                     self.resize(img)
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
@@ -150,5 +150,5 @@ class camera(threading.Thread):
         
 
 if __name__ == "__main__":
-    cam = camera(url = 'http://192.168.137.200:4747/mjpegfeed', angle = 0)
+    cam = camera(url = 'http://192.168.137.12:4747/mjpegfeed', angle = 0)
     cam.start()

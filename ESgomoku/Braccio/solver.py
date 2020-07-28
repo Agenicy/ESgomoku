@@ -87,12 +87,12 @@ class solver():
         t, o, p, _ = im.getpixel((x,y))
         
         if _ == 0:
-            print('No Solution')
+            print('[solver] No Solution')
             return 0,0,0
         x, y = self.func(t,o,p)
         
         if show:
-            print(f'target x = {x_in}, target y = {y_in}, x = {x}, y = {y}\n    solution = {t},{o},{p},\n    loss = {pow((x-x_in),2) + pow((y-y_in),2) }')
+            print(f'[solver]\n    target x = {x_in}, target y = {y_in},\n    solver x = {x}, solver y = {y}\n    solution = {t},{o},{p},  error = {pow((x-x_in),2) + pow((y-y_in),2) }')
         return t, o, p
 
 if __name__ == "__main__":

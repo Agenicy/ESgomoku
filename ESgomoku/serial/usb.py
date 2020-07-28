@@ -1,7 +1,7 @@
 import serial  # 引用pySerial模組
 import binascii
 import threading
-from time import sleep
+from time import sleep, time
 
 class client(threading.Thread):
     def __init__(self, signal, port='COM4', baud=9600, show = False):
@@ -55,8 +55,7 @@ class client(threading.Thread):
             print(f'state = {self.state}')
         if d == 1:
             # Client online
-            if self.show:
-                print(f'Here comes a new client.')
+            print(f'Here comes a new client.')
             self.state = 2
         else:
             self.ResetClient()
@@ -91,8 +90,15 @@ class client(threading.Thread):
          
     def SendBatch(self):
         """ client in state 4, start sending data"""
+        def printDataBuffer():
+            sb = "send: "
+            for i in self.dataBuffer:
+                 sb += str(i) + ','
+            print(sb[:-1])
+            
         for d in range(len(self.dataBuffer)):
             self.Send(self.dataBuffer[d])
+        printDataBuffer()
         client_state = self.GetData(4)
         if client_state == 4:
             # ACK
@@ -107,7 +113,7 @@ class client(threading.Thread):
             print(f'[Warning]: {client_state}')
     
     # ---------------------------------------------------------------------
-    def GetData(self, cmd=None, time = 0.3):
+    def GetData(self, cmd=None, time = 0.1):
         """[Blocking] read a byte"""
         while not self.ser.in_waiting:
             if type(cmd) is int:
@@ -126,8 +132,8 @@ class client(threading.Thread):
         """ Send a byte, or lists of byte"""
         if type(data) is int:
             # send a byte
-            if self.show:
-                print(f'send {data.to_bytes(1, byteorder="big")}')
+            """if self.show:
+                print(f'send {data.to_bytes(1, byteorder="big")}')"""
             self.ser.write(data.to_bytes(1, byteorder='big'))
         elif type(data) is list:
             for d in data:
