@@ -14,9 +14,6 @@ class detect():
         self.unit = unitW = unitH = int(self.im_size/(points+2*outline))
         
         self.point = []
-        for i in range(0, points):
-            for j in range(0, points):
-                self.point.append((int((i+outline+0.5)*self.unit), int((j+outline+0.5)*self.unit)))
         
         self.color_black = [80,80,80]
         self.color_white = [230,230,230]
@@ -36,18 +33,26 @@ class detect():
             for y in range(0, points ):
                 self.pos.append([int(unitW * (x+outline+0.5)), int(unitH *( y+outline+0.5))])
 
+                # tuple
+                self.point.append((int((x+outline+0.5)*self.unit), int((y+outline+0.5)*self.unit)))
+                
     def getLoc(self):
         while True:
             im, d = self.cam.getDst()
             #d = cv2.blur(d,(8, 8))
             
-            
             gray = cv2.cvtColor(d, cv2.COLOR_BGR2GRAY)
             d = cv2.GaussianBlur(gray, (9,9),0)
-            print(d)
-            color, loc = self.analyze(d)
+            
+            d = cv2.cvtColor(d, cv2.COLOR_GRAY2BGR)
+
+                      
             ims = cv2.resize(im,(self.im_size,self.im_size))
             ds = cv2.resize(d,(self.im_size,self.im_size))
+            
+            
+            color, loc = self.analyze(ds)
+            
             cv2.imshow('original', ims)
             
             """
@@ -123,7 +128,7 @@ class detect():
             line = [[],[],[]]
             for y in range(9):
                 pos = self.pos[x*9 + y]
-                gap = int(self.unit/10)
+                gap = int(self.unit/4)
                 color = np.array([img[int(pos[0]),int(pos[1])],
                                   img[int(pos[0])+gap,int(pos[1])],
                                   img[int(pos[0]),int(pos[1])+gap],
@@ -135,8 +140,6 @@ class detect():
                                 img[int(pos[0])-gap,int(pos[1])+gap],
                                     img[int(pos[0])+gap,int(pos[1])-gap]])
                 color = np.mean(color, axis=0).tolist()
-                if x == 4 and y == 4:
-                    print(img[int(pos[0]),int(pos[1])])
                 b, w = isChess(color)
                 line[0].append(b)
                 line[1].append(w)
@@ -145,9 +148,11 @@ class detect():
                 if not self.ds_show is None:
                     if w == 1:
                         color = [255,255,255]
+                        cv2.circle(self.ds_show, (int(pos[1]),int(pos[0])), 8, (200,200,200), thickness=-1)
                     elif b == 1:
                         color = [0,0,0]
-                    cv2.circle(self.ds_show, (int(pos[0]),int(pos[1])), 5, (color), thickness=-1)
+                        cv2.circle(self.ds_show, (int(pos[1]),int(pos[0])), 8, (30,30,30), thickness=-1)
+                    cv2.circle(self.ds_show, (int(pos[1]),int(pos[0])), 5, (color), thickness=-1)
                 
             black.append(line[0])
             white.append(line[1])

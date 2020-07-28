@@ -98,6 +98,9 @@ class camera(threading.Thread):
                     self.M = cv2.getPerspectiveTransform(corner, to)
                     self.BoardArea = cv2.contourArea(corner)
                     self.board_corner = self.board_area
+                    self.isboardcorrect = True
+                else:
+                    self.isboardcorrect = False
             except:
                 pass
 
@@ -131,9 +134,13 @@ class camera(threading.Thread):
 
                 cv2.drawContours(img, self.board_area, -1, (255, 0, 0), 3)
                 try:
-                    cv2.drawContours(img, self.board_corner, -1, (0, 255, 0), 3)
+                    if self.isboardcorrect:
+                        cv2.drawContours(img, self.board_corner, -1, (0, 255, 0), 3)
+                    else:
+                        cv2.drawContours(img, self.board_corner, -1, (0, 0, 255), 3)
                 except:
                     pass
+                
                 if __name__ == "__main__":
                     cv2.imshow('cam', img)
                     cv2.imshow('cam_resize', dst)
