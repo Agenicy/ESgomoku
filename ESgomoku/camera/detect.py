@@ -5,13 +5,18 @@ import numpy as np
 import cv2
 
 class detect():
-    def __init__(self, camera, points=9, outline = 3):
+    def __init__(self, camera, points=9, outline = 0.3):
         super().__init__()
         
-        unitW = 50
-        unitH = 50
-        self.color_black = [100,100,100]
-        self.color_white = [180,220,230]
+        self.ds_show = None
+        
+        self.im_size = 480
+        self.unit = unitW = unitH = int(self.im_size/(points+2*outline))
+        
+        self.point = []
+        
+        self.color_black = [80,80,80]
+        self.color_white = [230,230,230]
         
         self.vis = [[0]*points]*points
         self.count = 0 # numbers of chess now
@@ -24,28 +29,57 @@ class detect():
         
         self.points = points
         self.pos = []
-        for x in range(outline, points + outline):
-            for y in range(outline, points + outline):
-                self.pos.append([unitW * x, unitH * y])
+        for x in range(0, points ):
+            for y in range(0, points ):
+                self.pos.append([int(unitW * (x+outline+0.5)), int(unitH *( y+outline+0.5))])
 
+                # tuple
+                self.point.append((int((x+outline+0.5)*self.unit), int((y+outline+0.5)*self.unit)))
+                
     def getLoc(self):
         while True:
             im, d = self.cam.getDst()
-            d = cv2.blur(d,(8, 8))
-            color, loc = self.analyze(d)
-            ims = cv2.resize(im,(320,320))
-            ds = cv2.resize(d,(320,320))
+            #d = cv2.blur(d,(8, 8))
+            
+            gray = cv2.cvtColor(d, cv2.COLOR_BGR2GRAY)
+            d = cv2.GaussianBlur(gray, (9,9),0)
+            
+            d = cv2.cvtColor(d, cv2.COLOR_GRAY2BGR)
+
+                      
+            ims = cv2.resize(im,(self.im_size,self.im_size))
+            ds = cv2.resize(d,(self.im_size,self.im_size))
+            
+            
+            color, loc = self.analyze(ds)
+            
             cv2.imshow('original', ims)
-            cv2.imshow('result', ds)
+            
+            """
+            for point in [(3*self.unit, 3*self.unit),
+                          (7*self.unit, 7*self.unit),
+                          (3*self.unit, 7*self.unit),
+                          (7*self.unit, 3*self.unit),
+                          (5*self.unit, 5*self.unit)]:
+                cv2.circle(ds_show, point, 8, (0, 255, 255), thickness=-1)
+            for point in self.point:
+                cv2.circle(ds_show, point, 5, (0, 0, 255), thickness=-1)
+            cv2.imshow('result', ds_show)
+            """
+            self.ds_show = ds[:] # copy for future showing
+            
+                
             if not color is None:
                 loc[0], loc[1] = loc[1], loc[0]
                 return color, loc
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
             nowTime = time.time()
+            
             while time.time() - nowTime < 0.1:
                 # block
                 im, d = self.cam.getDst()
+                
     
     def analyze(self, dst):
         """取得當前棋盤所有落子位置"""
@@ -85,24 +119,47 @@ class detect():
         white = []
         black = []
         vis = []
+        
+        if not self.ds_show is None:
+            for point in self.point:
+                cv2.circle(self.ds_show, point, 8, (0, 0, 255), thickness=-1)
+                        
         for x in range(9):
             line = [[],[],[]]
             for y in range(9):
                 pos = self.pos[x*9 + y]
+                gap = int(self.unit/4)
                 color = np.array([img[int(pos[0]),int(pos[1])],
-                                  img[int(pos[0])+5,int(pos[1])+5],
-                                  img[int(pos[0])-5,int(pos[1])-5],
-                                  img[int(pos[0])-5,int(pos[1])+5],
-                                  img[int(pos[0])+5,int(pos[1])-5]])
+                                  img[int(pos[0])+gap,int(pos[1])],
+                                  img[int(pos[0]),int(pos[1])+gap],
+                                  img[int(pos[0])-gap,int(pos[1])],
+                                  img[int(pos[0]),int(pos[1])-gap],
+                                  
+                                  img[int(pos[0])+gap,int(pos[1])+gap],
+                                img[int(pos[0])-gap,int(pos[1])-gap],
+                                img[int(pos[0])-gap,int(pos[1])+gap],
+                                    img[int(pos[0])+gap,int(pos[1])-gap]])
                 color = np.mean(color, axis=0).tolist()
                 b, w = isChess(color)
                 line[0].append(b)
-                line[1].append(white)
+                line[1].append(w)
                 line[2].append(2*w+b)
+                
+                if not self.ds_show is None:
+                    if w == 1:
+                        color = [255,255,255]
+                        cv2.circle(self.ds_show, (int(pos[1]),int(pos[0])), 8, (200,200,200), thickness=-1)
+                    elif b == 1:
+                        color = [0,0,0]
+                        cv2.circle(self.ds_show, (int(pos[1]),int(pos[0])), 8, (30,30,30), thickness=-1)
+                    cv2.circle(self.ds_show, (int(pos[1]),int(pos[0])), 5, (color), thickness=-1)
                 
             black.append(line[0])
             white.append(line[1])
             vis.append(line[2])
+           
+        if not self.ds_show is None:
+            cv2.imshow('result', self.ds_show)
             
         return black, white, vis
 
@@ -139,7 +196,7 @@ class detect():
 if __name__ == "__main__":
     from camera import camera
     import cv2
-    cam = camera(url = 'http://192.168.137.41:4747/mjpegfeed', angle = -90)
+    cam = camera(url = 'http://192.168.137.12:4747/mjpegfeed', angle = -90)
     cam.start()
     det = detect(cam)
     time.sleep(1)

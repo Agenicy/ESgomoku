@@ -16,8 +16,8 @@ class camera(threading.Thread):
         self.pict_size = 700
         self.w = 480
         self.h = 640
-        self.border = 50  # resize border px
-        self.BoardArea = 0 # founded board area
+        self.border = 0  # resize border px
+        self.BoardArea = 0 # founded board area (overrided) 
 
         self.point = []
         for i in range(3, 12):
@@ -52,7 +52,8 @@ class camera(threading.Thread):
         ret, img = self.cam.read()
         img = self.rotate(img, self.angle)
         #! camera 區域
-        img = img[:, 80:-80]
+        s = 100
+        img = img[s:-s, 60+s:-60-s]
         img = cv2.resize(img, (self.pict_size, self.pict_size))
         return img
 
@@ -68,6 +69,8 @@ class camera(threading.Thread):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         blur_gray = cv2.GaussianBlur(
             gray, (self.kernel_size, self.kernel_size), 0)
+        if __name__ == "__main__":
+            cv2.imshow('cam_gray_blur', blur_gray)
         try:
             edges = self.detect_border(blur_gray)
         except:
@@ -95,6 +98,9 @@ class camera(threading.Thread):
                     self.M = cv2.getPerspectiveTransform(corner, to)
                     self.BoardArea = cv2.contourArea(corner)
                     self.board_corner = self.board_area
+                    self.isboardcorrect = True
+                else:
+                    self.isboardcorrect = False
             except:
                 pass
 
@@ -110,7 +116,7 @@ class camera(threading.Thread):
                 while self.M is None:
                     img = self.getImg()
 
-                    cv2.imshow('result', img)
+                    #cv2.imshow('finding M', img)
                     self.resize(img)
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         break
@@ -128,11 +134,16 @@ class camera(threading.Thread):
 
                 cv2.drawContours(img, self.board_area, -1, (255, 0, 0), 3)
                 try:
-                    cv2.drawContours(img, self.board_corner, -1, (0, 255, 0), 3)
+                    if self.isboardcorrect:
+                        cv2.drawContours(img, self.board_corner, -1, (0, 255, 0), 3)
+                    else:
+                        cv2.drawContours(img, self.board_corner, -1, (0, 0, 255), 3)
                 except:
                     pass
-                #cv2.imshow('result', img)
-                #cv2.imshow('resize', dst)
+                
+                if __name__ == "__main__":
+                    cv2.imshow('cam', img)
+                    cv2.imshow('cam_resize', dst)
                 
                 self.pict = [img, dst]
 
@@ -146,5 +157,5 @@ class camera(threading.Thread):
         
 
 if __name__ == "__main__":
-    cam = camera(url = 'http://192.168.137.41:4747/mjpegfeed', angle = 0)
+    cam = camera(url = 'http://192.168.137.12:4747/mjpegfeed', angle = 0)
     cam.start()
