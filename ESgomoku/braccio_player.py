@@ -21,7 +21,7 @@ y_center = 95 # 轉軸正中央相對於基準面的高度
 y_150 = 115 # 用0為基準修正，150.0時相對於基準面的高度
 y_400 = 155 # 用0為基準修正，400.0時相對於基準面的高度
 y_board = -93 + 40 # 落子的高度
-y_board_chess = -93 + 10 # 夾棋子的高度
+y_board_chess = -93 + 20 # 夾棋子的高度
 
 def y_function(x, y):
     return y - (x - (-150)) * (y_400 - y_150) / ((-400) - (-150)) - (y_150 - y_center) # Δy - Δx * 修正函數(實驗求得)
@@ -31,9 +31,12 @@ def MakeData(x, y,ang = 90,catch=0,time=20):
     y = y_function(x, y)
     t, o, p = s.Calc(x, y)
     if t != 0:
-        return [time, ang, t, o, p, 0 , 30 + catch*20]
+        return [time, ang, t, o, p, 0 , 30 + catch*23]
     else:
         return False
+
+def ang_function(ang):
+    return ang + (90-ang_90)
 
 def LocToRec(loc = list):
     """
@@ -65,7 +68,7 @@ def LocToRec(loc = list):
         if ang < 0:
             ang += 180
             
-    ang += (90-ang_90) # 修正
+    ang = ang_function(ang) # 修正
     
     return r, ang # 弳度轉弧度
     
@@ -80,22 +83,21 @@ u.Wait(port=port)
 def catch(ang):
     # 夾棋子 --------------------------------------------------------------------
     # move
-    
-    prepare = MakeData(x = -150, y= y_board_chess ,ang = 0, catch = 0)
+    x_0 = -160
+    angle_0 = 1
+    prepare = MakeData(x = x_0, y= y_board_chess ,ang = ang_function(angle_0), catch = 0)
     u.UserSend(data = prepare, port = port)
     u.Wait(port=port)
-    sleep(1)
     # catch
-    prepare = MakeData(x = -150, y= y_board_chess ,ang = 0, catch = 1, time = 10)
+    prepare = MakeData(x = x_0, y= y_board_chess ,ang = ang_function(angle_0), catch = 1, time = 10)
     u.UserSend(data = prepare, port = port)
     u.Wait(port=port)
     # take up
-    #prepare = MakeData(x = -150, y= y_board_chess + 40 ,ang = 0, catch = 1, time = 10)
-    prepare[3] = prepare[3] - 10
+    prepare = MakeData(x = x_0 - 20 , y= y_board + 40 ,ang = ang_function(angle_0), catch = 1, time = 30)
     u.UserSend(data = prepare, port = port)
     u.Wait(port=port)
     # ready
-    u.UserSend(data = MakeData(x = -150, y= y_board + 40 ,ang = ang, catch = 1), port = port)
+    u.UserSend(data = MakeData(x = x_0, y= y_board + 40 ,ang = ang, catch = 1), port = port)
     u.Wait(port=port)
     # --------------------------------------------------------------------------
 

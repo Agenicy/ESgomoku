@@ -13,7 +13,7 @@ class camera(threading.Thread):
 
         self.kernel_size = 5
         
-        self.pict_size = 700
+        self.pict_size = 480
         self.w = 480
         self.h = 640
         self.border = 0  # resize border px
@@ -31,7 +31,7 @@ class camera(threading.Thread):
         # 获取图像尺寸
         (h, w) = img.shape[:2]
 
-        # 若未指定旋转中心，则将图像中心设为旋转中心
+        # 若未指定旋转中心,则将图像中心设为旋转中心
         if center is None:
             center = (w / 2, h / 2)
 
@@ -58,11 +58,31 @@ class camera(threading.Thread):
         return img
 
     def detect_border(self, blur_gray):
-        """ 給定圖片，回傳邊緣偵測後的版本"""
+        """ 給定圖片,回傳邊緣偵測後的版本"""
         low_threshold = 50
         high_threshold = 150
         edges = cv2.Canny(blur_gray, low_threshold, high_threshold)
-        return edges
+        #return edges
+    
+        rho = 1
+        theta = np.pi/180
+        threshold = 1
+        min_line_length = 1
+        max_line_gap = 50
+        
+        line_image = np.copy(edges)*0 #creating a blank to draw lines on
+        
+        lines = cv2.HoughLinesP(edges,rho,theta,threshold,np.array([]),min_line_length,max_line_gap)
+        
+        for line in lines:
+            for x1,y1,x2,y2 in line:
+                l = pow((pow((x1-x2),2)+pow((y1-y2),2)),0.5)
+                
+                cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),3)
+        if __name__ == '__main__':
+            cv2.imshow('edges', edges)
+            cv2.imshow('line_image', line_image)
+        return line_image
 
     def resize(self, img):
         # 將圖片轉為灰階
@@ -93,7 +113,7 @@ class camera(threading.Thread):
                 to = np.float32([[self.border, self.border], [self.border, self.pict_size-self.border], [
                                 self.pict_size-self.border, self.pict_size-self.border], [self.pict_size-self.border, self.border]])
 
-                if self.BoardArea*0.9 <= cv2.contourArea(corner):
+                if self.BoardArea*0.95 <= cv2.contourArea(corner):
                     # 取得變形公式
                     self.M = cv2.getPerspectiveTransform(corner, to)
                     self.BoardArea = cv2.contourArea(corner)
@@ -124,22 +144,16 @@ class camera(threading.Thread):
                 # 透視變形
                 dst = cv2.warpPerspective(
                     img, self.M, (self.pict_size, self.pict_size))
-                """
-                # draw points
-                for point in [(5*self.border, 5*self.border), (9*self.border, 9*self.border), (5*self.border, 9*self.border), (9*self.border, 5*self.border), (7*self.border, 7*self.border)]:
-                    cv2.circle(dst, point, 8, (0, 255, 255), thickness=-1)
-                for point in self.point:
-                    cv2.circle(dst, point, 5, (0, 0, 255), thickness=-1)
-                """
 
-                cv2.drawContours(img, self.board_area, -1, (255, 0, 0), 3)
-                try:
-                    if self.isboardcorrect:
-                        cv2.drawContours(img, self.board_corner, -1, (0, 255, 0), 3)
-                    else:
-                        cv2.drawContours(img, self.board_corner, -1, (0, 0, 255), 3)
-                except:
-                    pass
+                #cv2.drawContours(img, self.board_area, -1, (255, 0, 0), 3)
+                if __name__ == '__main__':
+                    try:
+                        if self.isboardcorrect:
+                            cv2.drawContours(img, self.board_corner, -1, (0, 255, 0), 3)
+                        else:
+                            cv2.drawContours(img, self.board_corner, -1, (0, 0, 255), 3)
+                    except:
+                        pass
                 
                 if __name__ == "__main__":
                     cv2.imshow('cam', img)
@@ -157,5 +171,5 @@ class camera(threading.Thread):
         
 
 if __name__ == "__main__":
-    cam = camera(url = 'http://192.168.137.12:4747/mjpegfeed', angle = 0)
+    cam = camera(url = 'http://192.168.137.49:4747/mjpegfeed', angle = 0)
     cam.start()

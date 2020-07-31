@@ -95,15 +95,16 @@ class client(threading.Thread):
             for i in self.dataBuffer:
                  sb += str(i) + ','
             print(sb[:-1])
-            
-        for d in range(len(self.dataBuffer)):
+        
+        data_length = 7
+        for d in range(data_length):
             self.Send(self.dataBuffer[d])
         printDataBuffer()
         client_state = self.GetData(4)
         if client_state == 4:
             # ACK
             self.state = 2
-            self.dataBuffer.clear()
+            self.dataBuffer = self.dataBuffer[data_length:]
             if self.show:
                 print('ACK')
         elif client_state == 5:

@@ -38,6 +38,13 @@ class detect():
                 
     def getLoc(self):
         while True:
+            
+            nowTime = time.time()
+            
+            while time.time() - nowTime < 0.1:
+                # block
+                im, d = self.cam.getDst()
+            
             im, d = self.cam.getDst()
             #d = cv2.blur(d,(8, 8))
             
@@ -46,12 +53,18 @@ class detect():
             
             d = cv2.cvtColor(d, cv2.COLOR_GRAY2BGR)
 
+            if self.cam.isboardcorrect:
+                cv2.drawContours(im, self.cam.board_corner, -1, (0, 255, 0), 3)
+            else:
+                cv2.drawContours(im, self.cam.board_corner, -1, (0, 0, 255), 3)
+                                
                       
             ims = cv2.resize(im,(self.im_size,self.im_size))
             ds = cv2.resize(d,(self.im_size,self.im_size))
             
-            
-            color, loc = self.analyze(ds)
+            color = None
+            if self.cam.isboardcorrect:
+                color, loc = self.analyze(ds)
             
             cv2.imshow('original', ims)
             
@@ -74,11 +87,6 @@ class detect():
                 return color, loc
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-            nowTime = time.time()
-            
-            while time.time() - nowTime < 0.1:
-                # block
-                im, d = self.cam.getDst()
                 
     
     def analyze(self, dst):
@@ -160,7 +168,6 @@ class detect():
            
         if not self.ds_show is None:
             cv2.imshow('result', self.ds_show)
-            
         return black, white, vis
 
     def getChange(self, dot = list):
@@ -196,7 +203,7 @@ class detect():
 if __name__ == "__main__":
     from camera import camera
     import cv2
-    cam = camera(url = 'http://192.168.137.12:4747/mjpegfeed', angle = -90)
+    cam = camera(url = 'http://192.168.137.49:4747/mjpegfeed', angle = -90)
     cam.start()
     det = detect(cam)
     time.sleep(1)
