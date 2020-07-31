@@ -157,7 +157,7 @@ def run():
 
     # USE ML
     best_policy = PolicyValueNet(width, height, model_file = model_file)
-    mcts_player = MCTSPlayer(best_policy.policy_value_fn, c_puct=5, n_playout=400)
+    mcts_player = MCTSPlayer(best_policy.policy_value_fn, c_puct=5, n_playout=800)
     ###
     
     while True:
