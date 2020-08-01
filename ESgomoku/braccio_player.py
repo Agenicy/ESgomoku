@@ -10,7 +10,12 @@ import numpy as np
 port = 'COM4'
 x_offset = 140 # 棋盤第一排中點左右偏差值 (絕對值)
 block_length = 300/9 # 棋盤格子長度
-block_width = 258/9
+block_width = block_length
+wid_0 = 300
+wid_8 = 300
+def wid_function(x):
+    d = wid_8 - wid_0
+    return (wid_0 + d * x) / 9
 
 # 以下 板子正中央為 90 deg
 waiting_action = [30, 0, 64, 178, 179, 0, 38] # 落子後的待機位置
@@ -19,8 +24,219 @@ ang_90 = 88 # 用90為基準修正，想要轉90度時的實際角度
 y_center = 95 # 轉軸正中央相對於基準面的高度
 y_150 = 115 # 用0為基準修正，150.0時相對於基準面的高度
 y_400 = 120 # 用0為基準修正，400.0時相對於基準面的高度
-y_board = -93 + 50 # 落子的高度
-y_board_chess = -93 + 30 # 夾棋子的高度
+y_board = -95 + 52 # 落子的高度
+y_board_chess = -95 + 32 # 夾棋子的高度
+
+def EXcalibration():
+    def ok(x):
+        return x == 'Y'
+    if not ok(input('Resetting Board, enter Y to continue:')):
+        return
+    
+    if ok(input('校準高度嗎? (Y/N)')):
+        start = True
+        while start:
+            prepare = MakeData(x = -150, y= 0 ,ang = 90, catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            
+            y_150 = int(input('請測量高度: ')) # 用0為基準修正，150.0時相對於基準面的高度
+            
+            
+            prepare = MakeData(x = -400, y= 0 ,ang = 90, catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            y_400 = int(input('請測量高度:')) # 用0為基準修正，400.0時相對於基準面的高度
+            
+            y_board = -95 + 50 # 落子的高度
+            prepare = MakeData(x = -200, y= y_function(-200, y_board) ,ang = 90, catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            while not ok(input('這樣的落子高度可以嗎? (Y/N)')):
+                
+                prepare = MakeData(x = -150, y= 0 ,ang = 90, catch = 1)
+                u.UserSend(data = prepare, port = port)
+                u.Wait(port=port)
+                
+                y_board = -95 + int(input(f'請輸入新的高度(剛才為{y_board+95}): '))
+                prepare = MakeData(x = -200, y= y_function(-200, y_board) ,ang = 90, catch = 1)
+                u.UserSend(data = prepare, port = port)
+                u.Wait(port=port)
+                
+            
+            y_board_chess = -95 + 30 # 夾棋子的高度
+            prepare = MakeData(x = -200, y= y_function(-200, y_board_chess) ,ang = 90, catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            while not ok(input('這樣的夾棋子高度可以嗎? (Y/N)')):
+                
+                prepare = MakeData(x = -150, y= 0 ,ang = 90, catch = 1)
+                u.UserSend(data = prepare, port = port)
+                u.Wait(port=port)
+                
+                y_board_chess = -95 + int(input(f'請輸入新的高度(剛才為{y_board_chess+95}): '))
+                prepare = MakeData(x = -200, y= y_function(-200, y_board_chess) ,ang = 90, catch = 1)
+                u.UserSend(data = prepare, port = port)
+                u.Wait(port=port)
+                
+            print('驗證結果')
+            prepare = MakeData(x = -150, y= y_function(-150, y_board) ,ang = 90, catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            prepare = MakeData(x = -400, y= y_function(-400, y_board) ,ang = 90, catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            prepare = MakeData(x = -150, y= y_function(-150, y_board_chess) ,ang = 90, catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            prepare = MakeData(x = -400, y= y_function(-400, y_board_chess) ,ang = 90, catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            if not ok('需要重新校準嗎? (Y/N)'):
+                start = False
+                    
+    if ok(input('校準角度嗎? (Y/N)')):
+        start = True
+        while start:
+            prepare = MakeData(x = -200, y= y_function(-200, y_board) ,ang = 0, catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            prepare = MakeData(x = -200, y= y_function(-200, y_board) ,ang = 90, catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            ang_90 = int(input('請輸入現在角度: ')) # 用90為基準修正，想要轉90度時的實際角度
+            
+            prepare = MakeData(x = -200, y= y_function(-200, y_board + 40) ,ang = ang_function(0), catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            
+            prepare = MakeData(x = -200, y= y_function(-200, y_board + 40) ,ang = ang_function(90), catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            
+            if ok(input('現在轉到90度了嗎? (Y/N)')):
+                start = False
+                        
+    if ok(input('垂直距離校準嗎? (Y/N)')):
+        x_offset = 140 # 棋盤第一排中點左右偏差值 (絕對值)
+        
+        prepare = MakeData(x = -x_offset, y= y_function( -x_offset, y_board+40) ,ang = ang_function(90), catch = 1)
+        u.UserSend(data = prepare, port = port)
+        u.Wait(port=port)
+        
+        while not ok(input('現在到達「棋盤離手臂最近的那一列」的中央了嗎? (Y/N)')):
+            prepare = MakeData(x = -150, y= 0 ,ang = ang_function(90), catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            
+            x_offset = int(input(f'請輸入新的位置 (剛才為 {x_offset})')) # 棋盤第一排中點左右偏差值 (絕對值)
+            
+            prepare = MakeData(x = -x_offset, y= y_function(-x_offset, y_board+40) ,ang = ang_function(90), catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+        
+        
+        block_length = 300/9 # 棋盤格子長度
+        
+        prepare = MakeData(x = -x_offset - 9 * block_length, y= y_function( -x_offset - 9 * block_length, y_board + 40) ,ang = ang_function(90), catch = 1)
+        u.UserSend(data = prepare, port = port)
+        u.Wait(port=port)
+        
+        while not ok(input('現在到達「棋盤離手臂最遠的那一列」的中央了嗎? (Y/N)')):
+            prepare = MakeData(x = -300, y= 0 ,ang = ang_function(90), catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            
+            block_length = -(int(input(f'請輸入新的位置 (剛才為 { x_offset - block_length * 9 })')) + x_offset)/9 # 棋盤第一排中點左右偏差值 (絕對值)
+            print(f'新的棋盤格長度: {block_length}')
+            
+            prepare = MakeData(x = -x_offset - 9 * block_length, y= y_function( -x_offset - 9 * block_length, y_board + 40) ,ang = ang_function(90), catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            
+        print('垂直校準結束')
+       
+    if ok(input('橫向距離校準嗎? (Y/N)')): 
+        start = True
+        while start:
+            block_width = block_length # 棋盤格子寬度
+            
+            prepare = MakeData(x = -x_offset - 4 * block_length, y= y_function( -x_offset - 4 * block_length, y_board + 40) ,ang = ang_function(90), catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            
+            if not ok(input('現在到達棋盤中央了嗎? (Y/N)')):
+                print('請重新較驗棋盤長度')
+                raise Exception('較驗失敗')
+            
+            def an(i):
+                r, ang = LocToRec([i,0])
+                prepare = MakeData(x = -r, y= y_function(-r, y_board + 40),ang = ang, catch = 1)
+                u.UserSend(data = prepare, port = port)
+                u.Wait(port=port)
+                x_at_0 = int(input('請輸入當前水平誤差(向外為正): '))
+                
+                r, ang = LocToRec([i,8])
+                prepare = MakeData(x = -r, y= y_function(-r, y_board + 40),ang = ang, catch = 1)
+                u.UserSend(data = prepare, port = port)
+                u.Wait(port=port)
+                x_at_8 = int(input('請輸入當前水平誤差(向外為正): '))
+                
+                return x_at_0 + x_at_8
+            
+            wid_0 += -an(0)
+            wid_8 += -an(8)
+            print(f'棋盤寬度: 在第0列為{wid_0}, 第8列為{wid_8}')
+            
+            r, ang = LocToRec([0,0])
+            prepare = MakeData(x = -r, y= y_function(y_board + 40),ang = ang, catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            r, ang = LocToRec([0,8])
+            prepare = MakeData(x = -r, y= y_function(y_board + 40),ang = ang, catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            r, ang = LocToRec([8,0])
+            prepare = MakeData(x = -r, y= y_function(y_board + 40),ang = ang, catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            r, ang = LocToRec([8,8])
+            prepare = MakeData(x = -r, y= y_function(y_board + 40),ang = ang, catch = 1)
+            u.UserSend(data = prepare, port = port)
+            u.Wait(port=port)
+            
+            if ok(input('重新校準嗎? (Y/N)')):
+                start = False
+    
+    print(f"""
+          y_150 = {y_150}
+          y_400 = {y_400}
+          y_board = {y_board}
+          y_board_chess = {y_board_chess}
+          ang_90 = {ang_90}
+          x_offset = {x_offset}
+          block_length = {block_length}
+          wid_0 = {wid_0}
+          wid_8 = {wid_8}
+          """)
+    
+    if not ok(input('儲存結果嗎? (Y/N)')):
+        return
+    
+    with open(file='settings',mode='w',encoding='utf8') as f:
+        f.write(f"""
+          y_150 = {y_150},
+          y_400 = {y_400},
+          y_board = {y_board},
+          y_board_chess = {y_board_chess},
+          ang_90 = {ang_90},
+          x_offset = {x_offset},
+          block_length = {block_length},
+          wid_0 = {wid_0},
+          wid_8 = {wid_8},
+          """)
+            
+        
 
 def y_function(x, y):
     return y - (x - (-150)) * (y_400 - y_150) / ((-400) - (-150)) - (y_150 - y_center) # Δy - Δx * 修正函數(實驗求得)
@@ -53,14 +269,10 @@ def LocToRec(loc = list):
     x轉為: 手臂左右位移
     y轉為: 手臂前後位移
     """
-    def wide_function(width,x,y):
-        w_x_at_y8 = 20 # 在8,8時x的位置(取夾子中點)
-        scale = (4 * width - w_x_at_y8)/4
-        return x * width
     
     x, y = loc[1], 8-loc[0] # x, y swap
     x = x - 4 # 以手臂左方為正, 中央為 0
-    x , y = int(wide_function(block_width,x,y)), int(y * block_length) # 轉換為mm
+    x , y = int(x * wid_function(x) ), int(y * block_length) # 轉換為mm
     print(f'[LocToRec] x = {x}, y = {y}')
     y = x_offset + y # 轉換為 (板子)前後偏移量 + loc y 位移 
     
@@ -76,7 +288,7 @@ def LocToRec(loc = list):
     return r, ang # 弳度轉弧度
     
 # -----------------------------------------------------------------
-testMode = False
+testMode = True
 s = solver()
 u = usb()
 u.AddClient(port, 9600, show = False, testMode = testMode)
@@ -231,6 +443,8 @@ if __name__ == '__main__':
                         for y in range(0,9):
                             print(f'\n\n{x},{y}:\n')
                             b.Action([x,y])
+                elif word == ['EXC']:
+                    EXcalibration()
                             
             #word = input(f'Enter Data (y, x, ang), use dot(".") to seprate...').replace('\n','').split('.')
             #u.UserSend(data = MakeData(x = int(word[0]), y= int(word[1]) ,ang = int(word[2]), catch = int(word[3])), port = port)
