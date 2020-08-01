@@ -4,6 +4,8 @@ import numpy as np
 
 import cv2
 
+from numba import jit
+
 class detect():
     def __init__(self, camera, points=9, outline = 0.3):
         super().__init__()
@@ -35,15 +37,16 @@ class detect():
 
                 # tuple
                 self.point.append((int((x+outline+0.5)*self.unit), int((y+outline+0.5)*self.unit)))
-                
+    
+    @jit(forceobj = True, parallel = True)    
     def getLoc(self):
         while True:
-            
+            """
             nowTime = time.time()
             
             while time.time() - nowTime < 0.1:
                 # block
-                im, d = self.cam.getDst()
+                im, d = self.cam.getDst()"""
             
             im, d = self.cam.getDst()
             #d = cv2.blur(d,(8, 8))
@@ -87,8 +90,7 @@ class detect():
                 return color, loc
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-                
-    
+            
     def analyze(self, dst):
         """取得當前棋盤所有落子位置"""
         black, white, dotList = self.getDot(dst)
@@ -99,30 +101,32 @@ class detect():
             return color, dotChange
         else:
             return None, [-1,-1]
+    
+    def isChess(self, color):
+        def blackTest(i):
+            if color[i] < self.color_black[i]:
+                return -1
+            return 0
         
+        def whiteTest(i):
+            if color[i] > self.color_white[i]:
+                return 1
+            return 0
+            
+        gate = 0
+        for i in range(0,3):
+            gate += blackTest(i)
+            gate += whiteTest(i)
+        
+        if gate < -2:
+            return 1, 0
+        elif gate > 2:
+            return 0, 1
+        else:
+            return 0, 0
+            
+    @jit(forceobj = True, parallel = True)
     def getDot(self, img):
-        def isChess(color):
-            def blackTest(i):
-                if color[i] < self.color_black[i]:
-                    return -1
-                return 0
-            
-            def whiteTest(i):
-                if color[i] > self.color_white[i]:
-                    return 1
-                return 0
-            
-            gate = 0
-            for i in range(0,3):
-                gate += blackTest(i)
-                gate += whiteTest(i)
-            
-            if gate < -2:
-                return 1, 0
-            elif gate > 2:
-                return 0, 1
-            else:
-                return 0, 0
         
         white = []
         black = []
@@ -148,7 +152,7 @@ class detect():
                                 img[int(pos[0])-gap,int(pos[1])+gap],
                                     img[int(pos[0])+gap,int(pos[1])-gap]])
                 color = np.mean(color, axis=0).tolist()
-                b, w = isChess(color)
+                b, w = self.isChess(color)
                 line[0].append(b)
                 line[1].append(w)
                 line[2].append(2*w+b)
@@ -170,6 +174,7 @@ class detect():
             cv2.imshow('result', self.ds_show)
         return black, white, vis
 
+    
     def getChange(self, dot = list):
         """return dotChange, changed"""
         find = [0,0]
@@ -203,7 +208,7 @@ class detect():
 if __name__ == "__main__":
     from camera import camera
     import cv2
-    cam = camera(url = 'http://192.168.137.49:4747/mjpegfeed', angle = -90)
+    cam = camera(url = 'http://192.168.137.74:4747/mjpegfeed', angle = -90)
     cam.start()
     det = detect(cam)
     time.sleep(1)

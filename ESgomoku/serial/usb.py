@@ -87,6 +87,9 @@ class client(threading.Thread):
                     print('start sending')
                 else:
                     print('nak')
+        else:
+            self.state = 2
+                    
          
     def SendBatch(self):
         """ client in state 4, start sending data"""
@@ -97,14 +100,17 @@ class client(threading.Thread):
             print(sb[:-1])
         
         data_length = 7
-        for d in range(data_length):
+        for d in range(0, data_length):
             self.Send(self.dataBuffer[d])
         printDataBuffer()
         client_state = self.GetData(4)
         if client_state == 4:
             # ACK
-            self.state = 2
             self.dataBuffer = self.dataBuffer[data_length:]
+            if len(self.dataBuffer) == 0:
+                self.state = 2
+            else:
+                self.state = 3
             if self.show:
                 print('ACK')
         elif client_state == 5:
@@ -209,7 +215,8 @@ class usb():
     def Wait(self, port = 'COM4'):
         sleep(0.5)
         while not self.client[port].state == 2:
-            sleep(0.1)
+            print(f"[ERROR] can't send because {port}.state is {self.client[port].state}")
+            sleep(0.2)
         sleep(0.5)
         return None
 
@@ -296,19 +303,31 @@ class Dummy(threading.Thread):
          
     def SendBatch(self):
         """ client in state 4, start sending data"""
-        for d in range(len(self.dataBuffer)):
+        def printDataBuffer():
+            sb = "send: "
+            for i in self.dataBuffer:
+                 sb += str(i) + ','
+            print(sb[:-1])
+            
+        data_length = 7
+        for d in range(data_length):
             self.Send(self.dataBuffer[d])
+        printDataBuffer()
         client_state = self.GetData(4)
         if client_state == 4:
             # ACK
-            self.state = 2
-            self.dataBuffer.clear()
+            self.dataBuffer = self.dataBuffer[data_length:]
+            if len(self.dataBuffer) == 0:
+                self.state = 2
+            else:
+                print(f'[FATAL WARRING] self.dataBuffer = {self.dataBuffer}')
+                while True:
+                    sleep(999)
             if self.show:
                 print('ACK')
         elif client_state == 5:
             self.state = 3
-            if self.show:
-                print('NAK')
+            print('NAK')
         else:
             print(f'[Warning]: {client_state}')
     

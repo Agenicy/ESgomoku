@@ -25,6 +25,10 @@ class camera(threading.Thread):
                 self.point.append((i*self.border, j*self.border))
         self.M = None
         self.pict = []
+        
+        self.isboardcorrect = False
+        self.lock = False # 開始一秒後鎖定棋盤大小
+        self.corner_count = 1 # 開始一秒後鎖定邊角數
 
     # 定义旋转rotate函数
     def rotate(self, img, angle, center=None, scale=1.0):
@@ -76,12 +80,27 @@ class camera(threading.Thread):
         
         for line in lines:
             for x1,y1,x2,y2 in line:
-                l = pow((pow((x1-x2),2)+pow((y1-y2),2)),0.5)
-                
                 cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),3)
+                
+        
+        rho = 1
+        theta = np.pi/180
+        threshold = 1
+        min_line_length = 5
+        max_line_gap = 3
+        
+        line_image = cv2.GaussianBlur(
+            line_image, (self.kernel_size, self.kernel_size), 0)
+        
+        lines = cv2.HoughLinesP(line_image,rho,theta,threshold,np.array([]),min_line_length,max_line_gap)
+        for line in lines:
+            for x1,y1,x2,y2 in line:
+                cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),3)
+        
         if __name__ == '__main__':
             cv2.imshow('edges', edges)
             cv2.imshow('line_image', line_image)
+            
         return line_image
 
     def resize(self, img):
@@ -91,10 +110,12 @@ class camera(threading.Thread):
             gray, (self.kernel_size, self.kernel_size), 0)
         if __name__ == "__main__":
             cv2.imshow('cam_gray_blur', blur_gray)
+            
         try:
             edges = self.detect_border(blur_gray)
         except:
             pass
+
 
         contours, hierarchy = cv2.findContours(
             edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -113,10 +134,18 @@ class camera(threading.Thread):
                 to = np.float32([[self.border, self.border], [self.border, self.pict_size-self.border], [
                                 self.pict_size-self.border, self.pict_size-self.border], [self.pict_size-self.border, self.border]])
 
-                if self.BoardArea*0.95 <= cv2.contourArea(corner):
+                lock =  time.time() - self.start_time > 3
+                error = (cv2.contourArea(corner) - self.BoardArea)/(self.BoardArea+1e-6)
+                c_error = abs((self.corner_count - len(self.board_area))/self.corner_count) 
+                if  (not lock and error > -0.1)\
+                    or\
+                    (lock and abs(error) < 2e-3 and\
+                    abs(c_error) < 1/15):
                     # 取得變形公式
                     self.M = cv2.getPerspectiveTransform(corner, to)
-                    self.BoardArea = cv2.contourArea(corner)
+                    if not lock:
+                        self.BoardArea = cv2.contourArea(corner)
+                        self.corner_count = len(self.board_area)
                     self.board_corner = self.board_area
                     self.isboardcorrect = True
                 else:
@@ -125,6 +154,7 @@ class camera(threading.Thread):
                 pass
 
     def run(self):
+        self.start_time = time.time()
         while True:
             try:
                 img = self.getImg()
@@ -171,5 +201,5 @@ class camera(threading.Thread):
         
 
 if __name__ == "__main__":
-    cam = camera(url = 'http://192.168.137.49:4747/mjpegfeed', angle = 0)
+    cam = camera(url = 'http://192.168.137.74:4747/mjpegfeed', angle = 0)
     cam.start()

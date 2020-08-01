@@ -7,21 +7,20 @@ from math import sqrt, atan, pi
 import numpy as np
 
 # 常數修正項 ------------------------------------------------------
-testMode = False
 port = 'COM4'
-x_offset = 150 # 棋盤第一排中點左右偏差值 (絕對值)
-block_length = 259/9 # 棋盤格子長度
-block_width = block_length
+x_offset = 140 # 棋盤第一排中點左右偏差值 (絕對值)
+block_length = 300/9 # 棋盤格子長度
+block_width = 258/9
 
 # 以下 板子正中央為 90 deg
 waiting_action = [30, 0, 64, 178, 179, 0, 38] # 落子後的待機位置
 
-ang_90 = 86 # 用90為基準修正，想要轉90度時的實際角度
+ang_90 = 88 # 用90為基準修正，想要轉90度時的實際角度
 y_center = 95 # 轉軸正中央相對於基準面的高度
 y_150 = 115 # 用0為基準修正，150.0時相對於基準面的高度
-y_400 = 155 # 用0為基準修正，400.0時相對於基準面的高度
-y_board = -93 + 40 # 落子的高度
-y_board_chess = -93 + 20 # 夾棋子的高度
+y_400 = 120 # 用0為基準修正，400.0時相對於基準面的高度
+y_board = -93 + 50 # 落子的高度
+y_board_chess = -93 + 30 # 夾棋子的高度
 
 def y_function(x, y):
     return y - (x - (-150)) * (y_400 - y_150) / ((-400) - (-150)) - (y_150 - y_center) # Δy - Δx * 修正函數(實驗求得)
@@ -31,7 +30,7 @@ def MakeData(x, y,ang = 90,catch=0,time=20):
     y = y_function(x, y)
     t, o, p = s.Calc(x, y)
     if t != 0:
-        return [time, ang, t, o, p, 0 , 30 + catch*23]
+        return [time, ang, t, o, p, 0 , 30 + catch*25]
     else:
         return False
 
@@ -54,25 +53,30 @@ def LocToRec(loc = list):
     x轉為: 手臂左右位移
     y轉為: 手臂前後位移
     """
+    def wide_function(width,x,y):
+        w_x_at_y8 = 20 # 在8,8時x的位置(取夾子中點)
+        scale = (4 * width - w_x_at_y8)/4
+        return x * width
+    
     x, y = loc[1], 8-loc[0] # x, y swap
     x = x - 4 # 以手臂左方為正, 中央為 0
-    x , y = int(x * block_width), int(y * block_length) # 轉換為mm
+    x , y = int(wide_function(block_width,x,y)), int(y * block_length) # 轉換為mm
+    print(f'[LocToRec] x = {x}, y = {y}')
     y = x_offset + y # 轉換為 (板子)前後偏移量 + loc y 位移 
     
     r = sqrt(pow(x,2)+pow(y,2)) # 平面半徑
     if x == 0:
         # 正中央
-        ang = 90
+        ang = ang_function(90)
     else:
-        ang = atan(y/x)*180/pi
+        ang = ang_function(atan(y/x)*180/pi)
         if ang < 0:
             ang += 180
-            
-    ang = ang_function(ang) # 修正
     
     return r, ang # 弳度轉弧度
     
 # -----------------------------------------------------------------
+testMode = False
 s = solver()
 u = usb()
 u.AddClient(port, 9600, show = False, testMode = testMode)
@@ -83,19 +87,25 @@ u.Wait(port=port)
 def catch(ang):
     # 夾棋子 --------------------------------------------------------------------
     # move
-    x_0 = -160
-    angle_0 = 1
+    x_0 = -150
+    angle_0 = 3
     prepare = MakeData(x = x_0, y= y_board_chess ,ang = ang_function(angle_0), catch = 0)
     u.UserSend(data = prepare, port = port)
     u.Wait(port=port)
+    sleep(1) # wait for thread
+    
     # catch
     prepare = MakeData(x = x_0, y= y_board_chess ,ang = ang_function(angle_0), catch = 1, time = 10)
     u.UserSend(data = prepare, port = port)
     u.Wait(port=port)
+    sleep(1) # wait for thread
+    
     # take up
-    prepare = MakeData(x = x_0 - 20 , y= y_board + 40 ,ang = ang_function(angle_0), catch = 1, time = 30)
+    prepare = MakeData(x = x_0 - 15 , y= y_board + 40 ,ang = ang_function(angle_0), catch = 1, time = 30)
     u.UserSend(data = prepare, port = port)
     u.Wait(port=port)
+    sleep(1) # wait for thread
+    
     # ready
     u.UserSend(data = MakeData(x = x_0, y= y_board + 40 ,ang = ang, catch = 1), port = port)
     u.Wait(port=port)
@@ -171,38 +181,71 @@ class BraccioPlayer(object):
 
     def Action(self, loc = list):
         """落子"""
-        r, ang = LocToRec(loc)
-        print(f'[LocToRec]:\n    r: {r} ang: {ang}')
-        catch(ang)
-        
-        serial = MakeData(x = -r, y= y_board ,ang = ang, catch = 1)
-        serial2 = MakeData(x = -r, y= y_board ,ang = ang, catch = 0, time = 10)
-        end_action = MakeData(x = -r, y= y_board + 40 ,ang = ang, catch = 0, time = 10)
-        
-        if serial != False:
-            u.UserSend(data = serial, port = port)
+        if u.client[port].state == 2:
+            r, ang = LocToRec(loc)
+            print(f'[LocToRec]:\n    r: {r} ang: {ang}')
+            catch(ang)
+            
+            serial = MakeData(x = -r, y= y_board ,ang = ang, catch = 1)
+            
+            if serial != False:
+                u.UserSend(data = serial, port = port)
+                u.Wait(port=port)
+                sleep(1) # wait for thread
+                
+                serial2 = MakeData(x = -r, y= y_board ,ang = ang, catch = 0, time = 10)
+                u.UserSend(data = serial2, port = port)
+                u.Wait(port=port)
+                sleep(1) # wait for thread
+                
+                end_action = MakeData(x = -r, y= y_board + 60 ,ang = ang, catch = 0, time = 10)
+                u.UserSend(data = end_action, port = port)
+                u.Wait(port=port)
+                sleep(1) # wait for thread
+            else:
+                print("[ERROR] Position Invalid")
+            u.UserSend(data = waiting_action, port = port)
             u.Wait(port=port)
-            u.UserSend(data = serial2, port = port)
-            u.Wait(port=port)
-            u.UserSend(data = end_action, port = port)
-            u.Wait(port=port)
-        u.UserSend(data = waiting_action, port = port)
+        else:
+            while u.client[port].state != 2:
+                print(f"[ERROR] can't send because {port}.state is {self.client[port].state}")
+                sleep(0.5)
+            self.Action(loc)
     
 
 if __name__ == '__main__':
     b = BraccioPlayer(None)
+    debug_mode = False
     while True:
-        try:
-            
-            word = input(f'Enter Data (y, x), use dot(".") to seprate...\n').replace('\n','').split('.')
-            loc = [int(word[0]), int(word[1])]
-            b.Action(loc)
-                
+        if not debug_mode:
+            word = input(f'Enter Data (y, x), use dot(".") to seprate...\n')
+            try:
+                word = word.replace('\n','').split('.')
+                loc = [int(word[0]), int(word[1])]
+                b.Action(loc)
+            except Exception as e:
+                if word == ['debug']:
+                    debug_mode = True
+                elif word == ['show']:
+                    for x in range(0,9):
+                        for y in range(0,9):
+                            print(f'\n\n{x},{y}:\n')
+                            b.Action([x,y])
+                            
             #word = input(f'Enter Data (y, x, ang), use dot(".") to seprate...').replace('\n','').split('.')
             #u.UserSend(data = MakeData(x = int(word[0]), y= int(word[1]) ,ang = int(word[2]), catch = int(word[3])), port = port)
-        except Exception as e:
-            u.UserSend(data = waiting_action, port = port)
-            u.Wait(port=port)
-            print(e)
+        else:
+            debug = input('[DEBUG] enter(x.catch.ang)').replace('\n','')
+            if debug != ['exit']:
+                debug = debug.split('.')
+                x_0 = int(debug[0])
+                y = y_board if debug[1] == '0' else y_board_chess
+                angle_0 = int(debug[2])
+                prepare = MakeData(x = x_0 , y= y ,ang = ang_function(angle_0), catch = 0, time = 30)
+                u.UserSend(data = prepare, port = port)
+                u.Wait(port=port)
+            else:
+                debug_mode = False
+                
             
     
