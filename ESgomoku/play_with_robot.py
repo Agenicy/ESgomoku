@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function
+import sys
+sys.path.extend(['./serial', './Braccio', './camera'])
+
 from game import Board, Game
 from mcts_pure import MCTSPlayer as MCTS_Pure
 from mcts_alphaZero import MCTSPlayer
@@ -10,8 +13,8 @@ from mcts_alphaZero import MCTSPlayer
 # from policy_value_net_tensorflow import PolicyValueNet # Tensorflow
 from policy_value_net_keras import PolicyValueNet  # Keras
 from braccio_player import BraccioPlayer
-from camera.detect import detect
-from camera.camera import camera
+from detect import detect
+from camera import camera
 import cv2, time
 
 class Human(object):
@@ -47,7 +50,7 @@ class Client(object):
     """
     def __init__(self):
         self.player = None
-        cam = camera(url = 'http://192.168.137.41:4747/mjpegfeed', angle = -90)
+        cam = camera(url = 'http://192.168.137.54:4747/mjpegfeed', angle = 0)
         self.det = detect(cam)
         cam.start()
 

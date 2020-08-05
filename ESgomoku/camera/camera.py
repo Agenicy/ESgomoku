@@ -4,7 +4,7 @@ import time
 import threading
 
 class camera(threading.Thread):
-    def __init__(self, url='http://127.0.0.1:4747/mjpegfeed', angle = -90):
+    def __init__(self, url='http://127.0.0.1:4747/mjpegfeed', angle = 0):
         super().__init__()
         # 開啟網路攝影機
         self.cam = cv2.VideoCapture(url)
@@ -31,7 +31,7 @@ class camera(threading.Thread):
         self.corner_count = 1 # 開始一秒後鎖定邊角數
 
     # 定义旋转rotate函数
-    def rotate(self, img, angle, center=None, scale=1.0):
+    def rotate(self, img, angle, center=None, scale=1.0, flip = True):
         # 获取图像尺寸
         (h, w) = img.shape[:2]
 
@@ -42,6 +42,9 @@ class camera(threading.Thread):
         # 执行旋转
         M = cv2.getRotationMatrix2D(center, angle, scale)
         rotated = cv2.warpAffine(img, M, (w, h))
+
+        """if flip:
+            cv2.flip(rotated, 1)"""
 
         # 返回旋转后的图像
         return rotated
@@ -98,7 +101,7 @@ class camera(threading.Thread):
                 cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),3)
         
         if __name__ == '__main__':
-            cv2.imshow('edges', edges)
+            #cv2.imshow('edges', edges)
             cv2.imshow('line_image', line_image)
             
         return line_image
@@ -108,6 +111,10 @@ class camera(threading.Thread):
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         blur_gray = cv2.GaussianBlur(
             gray, (self.kernel_size, self.kernel_size), 0)
+        
+        # 對比度
+        blur_gray = np.uint8(np.clip((2 * blur_gray +0), 0, 255))
+        
         if __name__ == "__main__":
             cv2.imshow('cam_gray_blur', blur_gray)
             
@@ -139,8 +146,8 @@ class camera(threading.Thread):
                 c_error = abs((self.corner_count - len(self.board_area))/self.corner_count) 
                 if  (not lock and error > -0.1)\
                     or\
-                    (lock and abs(error) < 2e-3 and\
-                    abs(c_error) < 1/15):
+                    (lock and abs(error) < 0.01 and\
+                    abs(c_error) < 0.01):
                     # 取得變形公式
                     self.M = cv2.getPerspectiveTransform(corner, to)
                     if not lock:
@@ -150,8 +157,11 @@ class camera(threading.Thread):
                     self.isboardcorrect = True
                 else:
                     self.isboardcorrect = False
+                    if __name__ == '__main__':
+                        print(f'{abs(error)}/{abs(c_error)}')
             except:
                 pass
+
 
     def run(self):
         self.start_time = time.time()
@@ -201,5 +211,5 @@ class camera(threading.Thread):
         
 
 if __name__ == "__main__":
-    cam = camera(url = 'http://192.168.137.74:4747/mjpegfeed', angle = 0)
+    cam = camera(url = 'http://192.168.137.54:4747/mjpegfeed', angle = 0)
     cam.start()

@@ -196,6 +196,7 @@ class usb():
             print(e)
 
     def UserSend(self, data=None, port='COM4'):
+        print(f'[UserSend] {data}')
         self.Wait(port=port)
         try:
             word = []

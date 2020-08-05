@@ -7,7 +7,7 @@ import cv2
 from numba import jit
 
 class detect():
-    def __init__(self, camera, points=9, outline = 0.3):
+    def __init__(self, camera, points=9, outline = 0.4):
         super().__init__()
         
         self.ds_show = None
@@ -18,7 +18,7 @@ class detect():
         self.point = []
         
         self.color_black = [80,80,80]
-        self.color_white = [230,230,230]
+        self.color_white = [200,200,200]
         
         self.vis = [[0]*points]*points
         self.count = 0 # numbers of chess now
@@ -208,7 +208,7 @@ class detect():
 if __name__ == "__main__":
     from camera import camera
     import cv2
-    cam = camera(url = 'http://192.168.137.74:4747/mjpegfeed', angle = -90)
+    cam = camera(url = 'http://192.168.137.54:4747/mjpegfeed', angle = -90)
     cam.start()
     det = detect(cam)
     time.sleep(1)
