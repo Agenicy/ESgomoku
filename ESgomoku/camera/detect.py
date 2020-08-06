@@ -7,8 +7,9 @@ import cv2
 from numba import jit
 
 class detect():
-    def __init__(self, camera, points=9, outline = 0.4):
+    def __init__(self, camera, points=9, outline = 0.4, debug = False):
         super().__init__()
+        self.debug = debug
         
         self.ds_show = None
         
@@ -40,6 +41,8 @@ class detect():
     
     @jit(forceobj = True, parallel = True)    
     def getLoc(self):
+        while self.debug:
+            pass
         while True:
             """
             nowTime = time.time()
@@ -208,7 +211,8 @@ class detect():
 if __name__ == "__main__":
     from camera import camera
     import cv2
-    cam = camera(url = 'http://192.168.137.54:4747/mjpegfeed', angle = -90)
+    cam = camera(url = 'http://127.0.0.1:4747/mjpegfeed', angle = -90)
+    
     cam.start()
     det = detect(cam)
     time.sleep(1)

@@ -48,11 +48,11 @@ class Client(object):
     """
     human player
     """
-    def __init__(self):
+    def __init__(self, url, debug = False):
         self.player = None
-        cam = camera(url = 'http://192.168.137.54:4747/mjpegfeed', angle = 0)
-        self.det = detect(cam)
-        cam.start()
+        self.cam = camera(url = url, angle = 0, debug = debug)
+        self.det = detect(self.cam, debug = debug)
+        self.cam.start()
 
     def set_player_ind(self, p):
         self.player = p
@@ -83,20 +83,21 @@ class Client(object):
     
 
 
-def run():
+def run(client = Client(url = 'http://127.0.0.1:4747/mjpegfeed'), testMode = True):
     n = 5
     width, height = 9, 9
     model_file = './best_model_9_9_5.h5'
     try:
         board = Board(width=width, height=height, n_in_row=n)
         game = Game(board)
-
         # ############### human VS AI ###################
         # load the trained policy_value_net in either Theano/Lasagne, PyTorch or TensorFlow
-
+        
         best_policy = PolicyValueNet(width, height, model_file = model_file)
         mcts_player = BraccioPlayer(best_policy.policy_value_fn, c_puct=5, n_playout=400)
-
+        from braccio_player import init
+        init(testMode)
+        
         # load the provided model (trained in Theano/Lasagne)
         #  into a MCTS player written in pure numpy
         """
@@ -114,7 +115,7 @@ def run():
         #mcts_player = MCTS_Pure(c_puct=5, n_playout=3000)
 
         # human player, input your move in the format: 2,3
-        human = Client()
+        human = client
 
         # set start_player=0 for human first
         game.start_play(human, mcts_player, start_player=1, is_shown=1)

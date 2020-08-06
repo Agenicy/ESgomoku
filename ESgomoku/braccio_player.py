@@ -22,6 +22,18 @@ y_400 = 118 # 用0為基準修正，400.0時相對於基準面的高度
 y_board = -95 + 50 # 落子的高度
 y_board_chess = -95 + 26 # 夾棋子的高度
 
+# -----------------------------------------------------------------
+
+s = solver()
+u = usb()
+
+def init(testMode):
+    global u
+    u.AddClient(port, 9600, show = False, testMode = testMode)
+    u.Run()
+    u.UserSend(data = waiting_action, port = port)
+    u.Wait(port=port)
+
 def EXcalibration():
     def ok(x):
         return x == 'Y'
@@ -271,14 +283,6 @@ def LocToRec(loc = list, EXC = False):
             
     return r, ang # 弳度轉弧度
     
-# -----------------------------------------------------------------
-testMode = False
-s = solver()
-u = usb()
-u.AddClient(port, 9600, show = False, testMode = testMode)
-u.Run()
-u.UserSend(data = waiting_action, port = port)
-u.Wait(port=port)
 
 def catch(ang):
     # 夾棋子 --------------------------------------------------------------------
@@ -413,6 +417,7 @@ class BraccioPlayer(object):
 
 if __name__ == '__main__':
     b = BraccioPlayer(None)
+    init(False)
     debug_mode = False
     while True:
         if not debug_mode:

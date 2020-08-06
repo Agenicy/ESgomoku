@@ -4,8 +4,13 @@ import time
 import threading
 
 class camera(threading.Thread):
-    def __init__(self, url='http://127.0.0.1:4747/mjpegfeed', angle = 0):
+    def __init__(self, url='http://127.0.0.1:4747/mjpegfeed', angle = 0, debug = False):
         super().__init__()
+        self.debug = debug
+        
+        self.pict_size = 480
+        self.w = 480
+        self.h = 640
         # 開啟網路攝影機
         self.cam = cv2.VideoCapture(url)
         
@@ -13,9 +18,6 @@ class camera(threading.Thread):
 
         self.kernel_size = 5
         
-        self.pict_size = 480
-        self.w = 480
-        self.h = 640
         self.border = 0  # resize border px
         self.BoardArea = 0 # founded board area (overrided) 
 
@@ -24,6 +26,7 @@ class camera(threading.Thread):
             for j in range(3, 12):
                 self.point.append((i*self.border, j*self.border))
         self.M = None
+        
         self.pict = []
         
         self.isboardcorrect = False
@@ -158,51 +161,57 @@ class camera(threading.Thread):
                 else:
                     self.isboardcorrect = False
                     if __name__ == '__main__':
-                        print(f'{abs(error)}/{abs(c_error)}')
+                        #print(f'{abs(error)}/{abs(c_error)}')
+                        pass
             except:
                 pass
 
 
     def run(self):
-        self.start_time = time.time()
+        #self.start_time = time.time()                    
+            
         while True:
             try:
                 img = self.getImg()
 
                 #cv2.imshow('result', img)
                 
-                self.resize(img)
-                
-                while self.M is None:
-                    img = self.getImg()
-
-                    #cv2.imshow('finding M', img)
+                if self.debug is False: #! debug_Mode
                     self.resize(img)
-                    if cv2.waitKey(1) & 0xFF == ord('q'):
-                        break
                 
-                # 透視變形
-                dst = cv2.warpPerspective(
-                    img, self.M, (self.pict_size, self.pict_size))
+                    while self.M is None:
+                        img = self.getImg()
 
-                #cv2.drawContours(img, self.board_area, -1, (255, 0, 0), 3)
-                if __name__ == '__main__':
-                    try:
-                        if self.isboardcorrect:
-                            cv2.drawContours(img, self.board_corner, -1, (0, 255, 0), 3)
-                        else:
-                            cv2.drawContours(img, self.board_corner, -1, (0, 0, 255), 3)
-                    except:
-                        pass
-                
-                if __name__ == "__main__":
-                    cv2.imshow('cam', img)
-                    cv2.imshow('cam_resize', dst)
-                
-                self.pict = [img, dst]
+                        #cv2.imshow('finding M', img)
+                        self.resize(img)
+                        if cv2.waitKey(1) & 0xFF == ord('q'):
+                            break
+                    
+                    # 透視變形
+                    dst = cv2.warpPerspective(
+                        img, self.M, (self.pict_size, self.pict_size))
+
+                    #cv2.drawContours(img, self.board_area, -1, (255, 0, 0), 3)
+                    if __name__ == '__main__':
+                        try:
+                            if self.isboardcorrect:
+                                cv2.drawContours(img, self.board_corner, -1, (0, 255, 0), 3)
+                            else:
+                                cv2.drawContours(img, self.board_corner, -1, (0, 0, 255), 3)
+                        except:
+                            pass
+                    
+                    if __name__ == "__main__":
+                        cv2.imshow('cam', img)
+                        cv2.imshow('cam_resize', dst)
+                    
+                    self.pict = [img, dst]
+                else:
+                    self.pict = [img, img]
 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
+                
             except Exception as e:
                 print(e)
 
@@ -211,5 +220,5 @@ class camera(threading.Thread):
         
 
 if __name__ == "__main__":
-    cam = camera(url = 'http://192.168.137.54:4747/mjpegfeed', angle = 0)
+    cam = camera(url = 'http://127.0.0.1:4747/mjpegfeed', angle = 0)
     cam.start()
