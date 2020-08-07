@@ -13,7 +13,7 @@ import os
 import cv2
 
 sys.path.extend(['./serial', './Braccio','./camera'])
-testMode = False
+testMode = True
 #from camera import camera
 #cam = camera(url = 'http://127.0.0.1:4747/mjpegfeed', angle = 0, debug = True)
 #cam.start()
@@ -56,14 +56,12 @@ class PyMainWindow(QMainWindow, Ui_MainWindow):
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
  
-    def play(self):
-        print('AY')
-        
-        from play_with_robot import Client, run
+    def play(self):        
+        import play_with_robot
         global testMode
         
-        self.c = Client(url = 'http://127.0.0.1:4747/mjpegfeed', debug = testMode)
-        run(c, testMode)
+        self.c = play_with_robot.Client(url = 'http://127.0.0.1:4747/mjpegfeed', debug = testMode)
+        play_with_robot.run(c, testMode)
         
  
     def playMusic(self):
@@ -111,6 +109,7 @@ if __name__ == '__main__':
         
     from braccio_player import init
     
+    #! port setting is at braccio_player.Global
     init(testMode = testMode) # braccio init
     
     sys.exit(app.exec_())

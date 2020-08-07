@@ -83,7 +83,7 @@ class Client(object):
     
 
 
-def run(client = Client(url = 'http://127.0.0.1:4747/mjpegfeed'), testMode = True):
+def run(client = Client(url = 'http://127.0.0.1:4747/mjpegfeed', debug = True), testMode = True):
     n = 5
     width, height = 9, 9
     model_file = './best_model_9_9_5.h5'

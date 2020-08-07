@@ -11,8 +11,10 @@ class camera(threading.Thread):
         self.pict_size = 480
         self.w = 480
         self.h = 640
-        # 開啟網路攝影機
-        self.cam = cv2.VideoCapture(url)
+        
+        if not self.debug:
+            # 開啟網路攝影機
+            self.cam = cv2.VideoCapture(url)
         
         self.angle = angle
 
@@ -59,6 +61,11 @@ class camera(threading.Thread):
 
     def getImg(self):
         """ 從攝影機取得圖片"""
+        if self.debug:
+            import os
+            img = cv2.imread(os.path.split(os.path.realpath(__file__))[0] +  '\debug.png')
+            cv2.imshow('debug ON', img)
+            return img
         ret, img = self.cam.read()
         img = self.rotate(img, self.angle)
         #! camera 區域
@@ -144,7 +151,7 @@ class camera(threading.Thread):
                 to = np.float32([[self.border, self.border], [self.border, self.pict_size-self.border], [
                                 self.pict_size-self.border, self.pict_size-self.border], [self.pict_size-self.border, self.border]])
 
-                lock =  time.time() - self.start_time > 3
+                lock =  (time.time() - self.start_time) > 3
                 error = (cv2.contourArea(corner) - self.BoardArea)/(self.BoardArea+1e-6)
                 c_error = abs((self.corner_count - len(self.board_area))/self.corner_count) 
                 if  (not lock and error > -0.1)\
@@ -161,14 +168,15 @@ class camera(threading.Thread):
                 else:
                     self.isboardcorrect = False
                     if __name__ == '__main__':
-                        #print(f'{abs(error)}/{abs(c_error)}')
+                        print(f'{abs(error)}/{abs(c_error)}')
                         pass
-            except:
+            except Exception as e:
+                print(e)
                 pass
 
 
     def run(self):
-        #self.start_time = time.time()                    
+        self.start_time = time.time()                    
             
         while True:
             try:
@@ -176,38 +184,35 @@ class camera(threading.Thread):
 
                 #cv2.imshow('result', img)
                 
-                if self.debug is False: #! debug_Mode
+                self.resize(img)
+            
+                while self.M is None:
+                    img = self.getImg()
+
+                    #cv2.imshow('finding M', img)
                     self.resize(img)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
                 
-                    while self.M is None:
-                        img = self.getImg()
+                # 透視變形
+                dst = cv2.warpPerspective(
+                    img, self.M, (self.pict_size, self.pict_size))
 
-                        #cv2.imshow('finding M', img)
-                        self.resize(img)
-                        if cv2.waitKey(1) & 0xFF == ord('q'):
-                            break
-                    
-                    # 透視變形
-                    dst = cv2.warpPerspective(
-                        img, self.M, (self.pict_size, self.pict_size))
-
-                    #cv2.drawContours(img, self.board_area, -1, (255, 0, 0), 3)
-                    if __name__ == '__main__':
-                        try:
-                            if self.isboardcorrect:
-                                cv2.drawContours(img, self.board_corner, -1, (0, 255, 0), 3)
-                            else:
-                                cv2.drawContours(img, self.board_corner, -1, (0, 0, 255), 3)
-                        except:
-                            pass
-                    
-                    if __name__ == "__main__":
-                        cv2.imshow('cam', img)
-                        cv2.imshow('cam_resize', dst)
-                    
-                    self.pict = [img, dst]
-                else:
-                    self.pict = [img, img]
+                #cv2.drawContours(img, self.board_area, -1, (255, 0, 0), 3)
+                if __name__ == '__main__':
+                    try:
+                        if self.isboardcorrect:
+                            cv2.drawContours(img, self.board_corner, -1, (0, 255, 0), 3)
+                        else:
+                            cv2.drawContours(img, self.board_corner, -1, (0, 0, 255), 3)
+                    except:
+                        pass
+                
+                if __name__ == "__main__":
+                    cv2.imshow('cam', img)
+                    cv2.imshow('cam_resize', dst)
+                
+                self.pict = [img, dst]
 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
@@ -220,5 +225,5 @@ class camera(threading.Thread):
         
 
 if __name__ == "__main__":
-    cam = camera(url = 'http://127.0.0.1:4747/mjpegfeed', angle = 0)
+    cam = camera(url = 'http://127.0.0.1:4747/mjpegfeed', angle = 0, debug = True)
     cam.start()

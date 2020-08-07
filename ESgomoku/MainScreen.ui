@@ -224,6 +224,10 @@
      <property name="readOnly">
       <bool>true</bool>
      </property>
+     <property name="plainText">
+      <string>Console
+Output here.</string>
+     </property>
     </widget>
    </widget>
    <widget class="QLabel" name="label_console">

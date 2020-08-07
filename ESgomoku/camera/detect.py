@@ -39,10 +39,8 @@ class detect():
                 # tuple
                 self.point.append((int((x+outline+0.5)*self.unit), int((y+outline+0.5)*self.unit)))
     
-    @jit(forceobj = True, parallel = True)    
+    #@jit(forceobj = True, parallel = True)    
     def getLoc(self):
-        while self.debug:
-            pass
         while True:
             """
             nowTime = time.time()
@@ -128,9 +126,8 @@ class detect():
         else:
             return 0, 0
             
-    @jit(forceobj = True, parallel = True)
+    #@jit(forceobj = True, parallel = True)
     def getDot(self, img):
-        
         white = []
         black = []
         vis = []
@@ -211,7 +208,7 @@ class detect():
 if __name__ == "__main__":
     from camera import camera
     import cv2
-    cam = camera(url = 'http://127.0.0.1:4747/mjpegfeed', angle = -90)
+    cam = camera(url = 'http://127.0.0.1:4747/mjpegfeed', angle = -90, debug = True)
     
     cam.start()
     det = detect(cam)
