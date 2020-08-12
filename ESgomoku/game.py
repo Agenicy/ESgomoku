@@ -144,6 +144,7 @@ class Game(object):
         width = board.width
         height = board.height
 
+        print('--Board--')
         print("Player", player1, "with X".rjust(3))
         print("Player", player2, "with O".rjust(3))
         print()
@@ -162,6 +163,7 @@ class Game(object):
                 else:
                     print('_'.center(8), end='')
             print('\r\n\r\n')
+        print('---')
 
     def start_play(self, player1, player2, start_player=0, is_shown=1):
         """start a game between two players"""

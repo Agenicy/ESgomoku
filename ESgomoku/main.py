@@ -12,6 +12,8 @@ import sys
 import os
 import cv2
 
+from time import sleep
+
 sys.path.extend(['./serial', './Braccio','./camera'])
 testMode = True
 #from camera import camera
@@ -32,53 +34,60 @@ class PyMainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(PyMainWindow, self).__init__()
         
+        # init
+        self.client = None
+        
+        # ui
         self.setupUi(self)
+        self.setWindowIcon(QtGui.QIcon('./GUI/Resources/Picture/icon.png'))
         self.actionExit_2.triggered.connect(self.exit)
         self.actionNewGame_2.triggered.connect(self.play)
         self.actionMusic_On.triggered.connect(self.playMusic)
         
-        self.show()
-        
+        # camera
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._queryFrame)
         self._timer.setInterval(1000/30) # FPS 30
         self._timer.start()
         
+        self.show()
+        
+        # console
         self.console_old_text = []
         
         #重定向输出
         sys.stdout = EmittingStream(textWritten=self.normalOutputWritten)
-        sys.stderr = EmittingStream(textWritten=self.normalOutputWritten)
         
-        self.c = None
-         
+        # play
+        self.play()
+        
     def __del__(self):
         sys.stdout = sys.__stdout__
-        sys.stderr = sys.__stderr__
  
     def play(self):        
         import play_with_robot
         global testMode
         
-        self.c = play_with_robot.Client(url = 'http://127.0.0.1:4747/mjpegfeed', debug = testMode)
-        play_with_robot.run(c, testMode)
+        self.client = play_with_robot.Client(url = 'http://127.0.0.1:4747/mjpegfeed', debug = testMode)
+        play_with_robot.run(self.client, testMode)
         
  
     def playMusic(self):
         txt = 'True' if self.actionMusic_On.isChecked() else 'False'
         print(f'Music: {txt}')
  
-    def normalOutputWritten(self, text):
-        '''header = "<html><head/><body><p style='line-height:0px'>"
-        end = '</p></body></html>'
-        self.console_old_text.append(text)
-        if len(self.console_old_text) > 35:
-            self.console_old_text = self.console_old_text[1:len(self.console_old_text)]
-        sb = ""
-        for var in self.console_old_text:
-            sb +=  var + "<br/>"'''
-            
-        self.console_output.appendPlainText(text.replace('\n',''))
+    def normalOutputWritten(self, text):          
+        if text == '--Board--':
+            self.label_Board_Output.setText('')
+            sys.stdout = EmittingStream(textWritten=self.chessOutputWritten)
+        else:
+            self.console_output.appendPlainText(text.replace('\n',''))
+        
+    def chessOutputWritten(self, text):            
+        if text[0:2] == '---':
+            sys.stdout = EmittingStream(textWritten=self.normalOutputWritten)
+        else:
+            self.label_Board_Output.setText(self.label_Board_Output.text() + text)
         
     def exit(self):
         raise Exception()
@@ -87,17 +96,20 @@ class PyMainWindow(QMainWindow, Ui_MainWindow):
                 
     @pyqtSlot()
     def _queryFrame(self):
-        if not self.c is None:
-            img, dst = self.c.cam.getDst()
-            image = QtGui.QImage(img.data, img.shape[1], img.shape[0], QtGui.QImage.Format_RGB888).rgbSwapped()
+        if not self.client is None:
+            img, dst = self.client.det.getDst()
+            img = cv2.resize(img, (int(self.label_img_pict.width()), int(self.label_img_pict.height())))
+            image = QtGui.QImage(img.data, img.shape[1], img.shape[0], 3* img.shape[1], QtGui.QImage.Format_RGB888).rgbSwapped()
             self.label_img_pict.setPixmap(QtGui.QPixmap.fromImage(image))
             
-            image2 = QtGui.QImage(dst.data, dst.shape[1], dst.shape[0], QtGui.QImage.Format_RGB888).rgbSwapped()
+            dst = cv2.resize(dst, (int(self.label_dst_pict.width()), int(self.label_dst_pict.height())))
+            image2 = QtGui.QImage(dst.data, dst.shape[1], dst.shape[0], 3* img.shape[1], QtGui.QImage.Format_RGB888).rgbSwapped()
             self.label_dst_pict.setPixmap(QtGui.QPixmap.fromImage(image2))
                 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 pass
         else:
+            self.label_img_pict.setText("<font color='black'>No Camera.</font>")
             pass
             
 
@@ -110,6 +122,6 @@ if __name__ == '__main__':
     from braccio_player import init
     
     #! port setting is at braccio_player.Global
-    init(testMode = testMode) # braccio init
+    # init(testMode = testMode) # braccio init
     
     sys.exit(app.exec_())

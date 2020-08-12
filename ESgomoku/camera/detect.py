@@ -10,7 +10,7 @@ class detect():
     def __init__(self, camera, points=9, outline = 0.4, debug = False):
         super().__init__()
         self.debug = debug
-        
+                
         self.ds_show = None
         
         self.im_size = 480
@@ -63,14 +63,14 @@ class detect():
                 cv2.drawContours(im, self.cam.board_corner, -1, (0, 0, 255), 3)
                                 
                       
-            ims = cv2.resize(im,(self.im_size,self.im_size))
+            self.ims = cv2.resize(im,(self.im_size,self.im_size))
             ds = cv2.resize(d,(self.im_size,self.im_size))
             
             color = None
             if self.cam.isboardcorrect:
                 color, loc = self.analyze(ds)
             
-            cv2.imshow('original', ims)
+            cv2.imshow('original', self.ims)
             
             """
             for point in [(3*self.unit, 3*self.unit),
@@ -134,13 +134,13 @@ class detect():
         
         if not self.ds_show is None:
             for point in self.point:
-                cv2.circle(self.ds_show, point, 8, (0, 0, 255), thickness=-1)
+                self.ds_show = cv2.circle(self.ds_show, point, 8, (0, 0, 255), thickness=-1)
                         
         for x in range(9):
             line = [[],[],[]]
             for y in range(9):
                 pos = self.pos[x*9 + y]
-                gap = int(self.unit/4)
+                gap = int(self.unit/10)
                 color = np.array([img[int(pos[0]),int(pos[1])],
                                   img[int(pos[0])+gap,int(pos[1])],
                                   img[int(pos[0]),int(pos[1])+gap],
@@ -160,16 +160,16 @@ class detect():
                 if not self.ds_show is None:
                     if w == 1:
                         color = [255,255,255]
-                        cv2.circle(self.ds_show, (int(pos[1]),int(pos[0])), 8, (200,200,200), thickness=-1)
+                        self.ds_show = cv2.circle(self.ds_show, (int(pos[1]),int(pos[0])), 8, (200,200,200), thickness=-1)
                     elif b == 1:
                         color = [0,0,0]
-                        cv2.circle(self.ds_show, (int(pos[1]),int(pos[0])), 8, (30,30,30), thickness=-1)
-                    cv2.circle(self.ds_show, (int(pos[1]),int(pos[0])), 5, (color), thickness=-1)
+                        self.ds_show = cv2.circle(self.ds_show, (int(pos[1]),int(pos[0])), 8, (30,30,30), thickness=-1)
+                    self.ds_show = cv2.circle(self.ds_show, (int(pos[1]),int(pos[0])), 5, (color), thickness=-1)
                 
             black.append(line[0])
             white.append(line[1])
             vis.append(line[2])
-           
+            
         if not self.ds_show is None:
             cv2.imshow('result', self.ds_show)
         return black, white, vis
@@ -205,6 +205,9 @@ class detect():
                 self.confidence = 0
                 return find, 0
 
+    def getDst(self):
+        return self.ims, self.ds_show
+    
 if __name__ == "__main__":
     from camera import camera
     import cv2

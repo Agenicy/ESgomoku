@@ -64,7 +64,8 @@ class camera(threading.Thread):
         if self.debug:
             import os
             img = cv2.imread(os.path.split(os.path.realpath(__file__))[0] +  '\debug.png')
-            cv2.imshow('debug ON', img)
+            if __name__ == '__main':
+                cv2.imshow('debug ON', img)
             return img
         ret, img = self.cam.read()
         img = self.rotate(img, self.angle)
