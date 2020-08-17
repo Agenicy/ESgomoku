@@ -94,7 +94,7 @@ class camera(threading.Thread):
         
         for line in lines:
             for x1,y1,x2,y2 in line:
-                cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),3)
+                cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),1)
                 
         
         rho = 1
@@ -124,7 +124,7 @@ class camera(threading.Thread):
             gray, (self.kernel_size, self.kernel_size), 0)
         
         # 對比度
-        blur_gray = np.uint8(np.clip((2 * blur_gray +0), 0, 255))
+        blur_gray = np.uint8(np.clip((2 * blur_gray + 0), 10, 245))
         
         if __name__ == "__main__":
             cv2.imshow('cam_gray_blur', blur_gray)
@@ -226,5 +226,5 @@ class camera(threading.Thread):
         
 
 if __name__ == "__main__":
-    cam = camera(url = 'http://127.0.0.1:4747/mjpegfeed', angle = 0, debug = True)
+    cam = camera(url = 'http://192.168.137.236:4747/mjpegfeed', angle = 0, debug = False)
     cam.start()

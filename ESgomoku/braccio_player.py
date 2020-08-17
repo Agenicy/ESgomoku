@@ -267,7 +267,7 @@ def LocToRec(loc = list, EXC = False):
         y轉為: 手臂前後位移
     """
     
-    x, y = loc[1], 8-loc[0] # x, y swap
+    x, y = loc[1], 8 - loc[0] # x, y swap
     x = x - 4 # 以手臂左方為正, 中央為 0
     x , y = int(x * block_width ), int(y * block_length) # 轉換為mm
     print(f'[LocToRec] x = {x}, y = {y}')

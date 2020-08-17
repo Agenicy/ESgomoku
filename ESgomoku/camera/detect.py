@@ -5,13 +5,16 @@ import numpy as np
 import cv2
 
 from numba import jit
+from copy import deepcopy
 
 class detect():
     def __init__(self, camera, points=9, outline = 0.4, debug = False):
         super().__init__()
         self.debug = debug
                 
+        self.ds = None
         self.ds_show = None
+        self.imsLock = True
         
         self.im_size = 480
         self.unit = unitW = unitH = int(self.im_size/(points+2*outline))
@@ -19,7 +22,7 @@ class detect():
         self.point = []
         
         self.color_black = [80,80,80]
-        self.color_white = [200,200,200]
+        self.color_white = [195,195,195]
         
         self.vis = [[0]*points]*points
         self.count = 0 # numbers of chess now
@@ -39,9 +42,11 @@ class detect():
                 # tuple
                 self.point.append((int((x+outline+0.5)*self.unit), int((y+outline+0.5)*self.unit)))
     
-    #@jit(forceobj = True, parallel = True)    
+    @jit(forceobj = True, parallel = True)    
     def getLoc(self):
         while True:
+            self.imsLock = True
+            
             """
             nowTime = time.time()
             
@@ -83,11 +88,12 @@ class detect():
                 cv2.circle(ds_show, point, 5, (0, 0, 255), thickness=-1)
             cv2.imshow('result', ds_show)
             """
-            self.ds_show = ds[:] # copy for future showing
+            self.ds = ds
+            self.ds_show = deepcopy(ds) # copy for future showing
             
                 
             if not color is None:
-                loc[0], loc[1] = loc[1], loc[0]
+                loc[0], loc[1] = 8-loc[0], loc[1] 
                 return color, loc
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -98,7 +104,7 @@ class detect():
         dotChange, color = self.getChange(dotList)
         if color != 0:
             self.count += 1
-            print(f'Step {self.count}: { {1:"black",2:"white"}.get(color) } {dotChange}')
+            print(f'[Detect] Step {self.count}: { {1:"black",2:"white"}.get(color) } {dotChange}')
             return color, dotChange
         else:
             return None, [-1,-1]
@@ -126,7 +132,7 @@ class detect():
         else:
             return 0, 0
             
-    #@jit(forceobj = True, parallel = True)
+    @jit(forceobj = True, parallel = True)
     def getDot(self, img):
         white = []
         black = []
@@ -141,7 +147,7 @@ class detect():
             for y in range(9):
                 pos = self.pos[x*9 + y]
                 gap = int(self.unit/10)
-                color = np.array([img[int(pos[0]),int(pos[1])],
+                color_array = np.array([img[int(pos[0]),int(pos[1])],
                                   img[int(pos[0])+gap,int(pos[1])],
                                   img[int(pos[0]),int(pos[1])+gap],
                                   img[int(pos[0])-gap,int(pos[1])],
@@ -151,7 +157,7 @@ class detect():
                                 img[int(pos[0])-gap,int(pos[1])-gap],
                                 img[int(pos[0])-gap,int(pos[1])+gap],
                                     img[int(pos[0])+gap,int(pos[1])-gap]])
-                color = np.mean(color, axis=0).tolist()
+                color = np.mean(color_array, axis=0).tolist()
                 b, w = self.isChess(color)
                 line[0].append(b)
                 line[1].append(w)
@@ -170,6 +176,8 @@ class detect():
             white.append(line[1])
             vis.append(line[2])
             
+            self.imsLock = False
+            
         if not self.ds_show is None:
             cv2.imshow('result', self.ds_show)
         return black, white, vis
@@ -181,10 +189,10 @@ class detect():
         find_num = 0
         for x in range(self.points):
             for y in range(self.points):
-                if dot[x][y] != self.vis[x][y]:
+                if dot[x][y] != self.vis[x][y] and self.vis[x][y] == 0:
                     find[0] = x
                     find[1] = y
-                    color = dot[x][y]
+                    color = dot[x][y] # color is 1 or 2
                     find_num += 1
                     
         if find_num != 1:
@@ -206,12 +214,15 @@ class detect():
                 return find, 0
 
     def getDst(self):
-        return self.ims, self.ds_show
+        if not self.imsLock:
+            return self.ims, self.ds
+        else:
+            return None, None
     
 if __name__ == "__main__":
     from camera import camera
     import cv2
-    cam = camera(url = 'http://127.0.0.1:4747/mjpegfeed', angle = -90, debug = True)
+    cam = camera(url = 'http://192.168.137.236:4747/mjpegfeed', angle = 0, debug = False)
     
     cam.start()
     det = detect(cam)

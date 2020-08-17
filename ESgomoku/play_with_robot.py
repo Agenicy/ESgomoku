@@ -17,6 +17,8 @@ from detect import detect
 from camera import camera
 import cv2, time
 
+import threading
+
 class Human(object):
     """
     human player
@@ -48,9 +50,9 @@ class Client(object):
     """
     human player
     """
-    def __init__(self, url, debug = False):
+    def __init__(self, url, debug = False, angle = 0):
         self.player = None
-        self.cam = camera(url = url, angle = 0, debug = debug)
+        self.cam = camera(url = url, angle = angle, debug = debug)
         self.det = detect(self.cam, debug = debug)
         self.cam.start()
 
@@ -64,7 +66,7 @@ class Client(object):
                 print(color)
                 color, loc = self.det.getLoc()
             
-            print(loc)
+            print(loc)            
             location = loc
             if isinstance(location, str):  # for python3
                 location = [int(n, 10) for n in location.split(",")]
@@ -80,49 +82,53 @@ class Client(object):
 
     def __str__(self):
         return "Human {}".format(self.player)
-    
 
-
-def run(client = Client(url = 'http://127.0.0.1:4747/mjpegfeed', debug = True), testMode = True):
-    n = 5
-    width, height = 9, 9
-    model_file = './best_model_9_9_5.h5'
-    print('Game start.')
-    try:
-        board = Board(width=width, height=height, n_in_row=n)
-        game = Game(board)
-        # ############### human VS AI ###################
-        # load the trained policy_value_net in either Theano/Lasagne, PyTorch or TensorFlow
+class Play_With_Robot(threading.Thread):
+    def __init__(self, client = Client(url = 'http://127.0.0.1:4747/mjpegfeed', debug = True), testMode = True):
+        super().__init__()
+        self.client = client
+        self.testMode = testMode
         
-        best_policy = PolicyValueNet(width, height, model_file = model_file)
-        mcts_player = BraccioPlayer(best_policy.policy_value_fn, c_puct=5, n_playout=400)
-        from braccio_player import init
-        init(testMode)
-        
-        # load the provided model (trained in Theano/Lasagne)
-        #  into a MCTS player written in pure numpy
-        """
+    def run(self):
+        n = 5
+        width, height = 9, 9
+        model_file = './best_model_9_9_5.h5'
+        print('Game start.')
         try:
-            policy_param = pickle.load(open(model_file, 'rb'))
-        except:
-            policy_param = pickle.load(open(model_file, 'rb'),
-                                       encoding='bytes')  # To support python3
-        best_policy = PolicyValueNetNumpy(width, height, policy_param)
-        mcts_player = MCTSPlayer(best_policy.policy_value_fn,
-                                 c_puct=5,
-                                 n_playout=400)  # set larger n_playout for better performance
-        """
-        # uncomment the following line to play with pure MCTS (it's much weaker even with a larger n_playout)
-        #mcts_player = MCTS_Pure(c_puct=5, n_playout=3000)
+            board = Board(width=width, height=height, n_in_row=n)
+            game = Game(board)
+            # ############### human VS AI ###################
+            # load the trained policy_value_net in either Theano/Lasagne, PyTorch or TensorFlow
+            
+            best_policy = PolicyValueNet(width, height, model_file = model_file)
+            mcts_player = BraccioPlayer(best_policy.policy_value_fn, c_puct=5, n_playout=400)
+            from braccio_player import init
+            init(self.testMode)
+            
+            # load the provided model (trained in Theano/Lasagne)
+            #  into a MCTS player written in pure numpy
+            """
+            try:
+                policy_param = pickle.load(open(model_file, 'rb'))
+            except:
+                policy_param = pickle.load(open(model_file, 'rb'),
+                                        encoding='bytes')  # To support python3
+            best_policy = PolicyValueNetNumpy(width, height, policy_param)
+            mcts_player = MCTSPlayer(best_policy.policy_value_fn,
+                                    c_puct=5,
+                                    n_playout=400)  # set larger n_playout for better performance
+            """
+            # uncomment the following line to play with pure MCTS (it's much weaker even with a larger n_playout)
+            #mcts_player = MCTS_Pure(c_puct=5, n_playout=3000)
 
-        # human player, input your move in the format: 2,3
-        human = client
+            # human player, input your move in the format: 2,3
+            human = self.client
 
-        # set start_player=0 for human first
-        game.start_play(human, mcts_player, start_player=1, is_shown=1)
-    except KeyboardInterrupt:
-        print('\n\rquit')
-    cv2.destroyAllWindows()
+            # set start_player=0 for human first
+            game.start_play(human, mcts_player, start_player=1, is_shown=1)
+        except KeyboardInterrupt:
+            print('\n\rquit')
+        cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':

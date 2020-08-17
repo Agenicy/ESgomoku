@@ -150,9 +150,9 @@
     <property name="geometry">
      <rect>
       <x>400</x>
-      <y>129</y>
+      <y>69</y>
       <width>480</width>
-      <height>531</height>
+      <height>591</height>
      </rect>
     </property>
     <property name="frameShape">
@@ -167,7 +167,7 @@
        <x>10</x>
        <y>10</y>
        <width>461</width>
-       <height>511</height>
+       <height>571</height>
       </rect>
      </property>
      <property name="text">
@@ -188,7 +188,7 @@
     <property name="geometry">
      <rect>
       <x>400</x>
-      <y>90</y>
+      <y>40</y>
       <width>481</width>
       <height>31</height>
      </rect>
