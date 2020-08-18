@@ -6,6 +6,7 @@ import threading
 class camera(threading.Thread):
     def __init__(self, url='http://127.0.0.1:4747/mjpegfeed', angle = 0, debug = False):
         super().__init__()
+        
         self.debug = debug
         
         self.pict_size = 480
@@ -34,6 +35,8 @@ class camera(threading.Thread):
         self.isboardcorrect = False
         self.lock = False # 開始一秒後鎖定棋盤大小
         self.corner_count = 1 # 開始一秒後鎖定邊角數
+        
+        
 
     # 定义旋转rotate函数
     def rotate(self, img, angle, center=None, scale=1.0, flip = True):
@@ -222,9 +225,13 @@ class camera(threading.Thread):
                 print(e)
 
     def getDst(self):
+        while self.pict == []:
+            if not self.isAlive():
+                self.start()
+            pass
         return self.pict[0], self.pict[1]
         
 
 if __name__ == "__main__":
-    cam = camera(url = 'http://192.168.137.236:4747/mjpegfeed', angle = 0, debug = False)
-    cam.start()
+    cam = camera(url = 'http://192.168.137.178:4747/mjpegfeed', angle = 0, debug = False)
+    cam.getDst()

@@ -12,19 +12,17 @@ from MainScreen import Ui_MainWindow
 import os
 import cv2
 
-
 from pygame import mixer
 
 import threading
-
+import copy
+import play_with_robot
+        
 mixer.init()
 mixer.music.set_volume(1.0)
 
 sys.path.extend(['./serial', './Braccio','./camera'])
 testMode = False
-#from camera import camera
-#cam = camera(url = 'http://127.0.0.1:4747/mjpegfeed', angle = 0, debug = True)
-#cam.start()
 
 class Path():
     @staticmethod
@@ -32,9 +30,9 @@ class Path():
         return './GUI/Resources/Picture/' + str(filename)
 
 class EmittingStream(QObject):
-        textWritten = pyqtSignal(str)
-        def write(self, text):
-            self.textWritten.emit(str(text))
+    textWritten = pyqtSignal(str)
+    def write(self, text):
+        self.textWritten.emit(str(text))
 
 class BGM(threading.Thread):
     def __init__(self):
@@ -42,22 +40,20 @@ class BGM(threading.Thread):
         pass
     
     def run(self):
-        try:
-            while not mixer.music.get_busy():
-                mixer.music.load('./Resources/Music/start.mp3')
-                mixer.music.play()
-        except Exception:
-            pass
+        mixer.Channel(0).set_volume(0.1)
+        mixer.Channel(0).play(mixer.Sound('./Resources/Music/start.ogg'), -1)
 
+mixer.init()
 bgm = BGM()
+
+#TODO init here
+url = 'http://192.168.137.178:4747/mjpegfeed'
 
 class PyMainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super(PyMainWindow, self).__init__()
         
-        # init
-        self.client = None
-        
+            
         # ui
         self.setupUi(self)
         self.setWindowIcon(QtGui.QIcon('./GUI/Resources/Picture/icon.png'))
@@ -71,47 +67,63 @@ class PyMainWindow(QMainWindow, Ui_MainWindow):
         self._timer.setInterval(10)
         self._timer.start()
         
-        self.show()
-        
         # console
         self.console_old_text = []
         
-        #重定向输出
-        self.switch = False # 切換輸出欄位
-        sys.stdout = EmittingStream(textWritten=self.normalOutputWritten)
+        if not testMode:
+            self.client = play_with_robot.Client(url = url, angle = 0, debug = testMode, init = True) 
+            self.client.det.create()
         
+        from time import sleep
+        sleep(2) 
         # play
         self.threads = None
         print("Press NewGame...")
-        # self.play()
         
+        self.actionMusic_On.setChecked(True)
         bgm.start()
+        mixer.Channel(1).play(mixer.Sound('./Resources/ROBOT_SE/ready.ogg'))
+        
+        self.show()
+        
+        #重定向输出
+        self.switch = False # 切換輸出板
+        sys.stdout = EmittingStream(textWritten=self.normalOutputWritten)
+        
         
     def playMusic(self):
-        pass
+        if self.actionMusic_On.isChecked():
+            self.play_se('music_on')
+        else:
+            self.play_se('music_off')
+            
+    def play_se(self, filename):
+        if self.actionMusic_On.isChecked():
+            mixer.Channel(1).play(mixer.Sound(f'./Resources/ROBOT_SE/{filename}.ogg'))
         
     def __del__(self):
         sys.stdout = sys.__stdout__
  
     def play(self):        
-        import play_with_robot
+        self.play_se('game_start')
         global testMode
         
         if not testMode:
-            client = play_with_robot.Client(url = 'http://192.168.137.236:4747/mjpegfeed', angle = 0, debug = testMode)
+                  
             #! threading
             # play_with_robot.run(self.client, testMode)
-            self.threads = play_with_robot.Play_With_Robot(client, testMode = testMode)
-            self.client = self.threads.client
+            who_first = 1
+            #* BGM
+            if who_first == 1:
+                self.play_se('ai_first')
+            elif who_first == 0:
+                self.play_se('human_first')
+            
+            self.threads = play_with_robot.Play_With_Robot(parent = self, who_first = who_first, client = self.client , testMode = testMode)
+            
             
             self.threads.start()
             
-            # music
-            while mixer.music.get_busy():
-                pass
-            if self.actionMusic_On.isChecked():
-                mixer.music.load('./Resources/Music/start.m4a')
-                mixer.music.play()
         else:
             self.client = play_with_robot.Human()
         
@@ -121,23 +133,43 @@ class PyMainWindow(QMainWindow, Ui_MainWindow):
                 self.switch = True
                 self.label_Board_Output.setText('')
             else:
-                if text[0:8] == '[Detect]' or True:
-                    self.console_output.appendPlainText(text.replace('\n',''))
+                self.console_output.appendPlainText(text.replace('\n',''))
+                #if text[0:8] == '[Detect]':
+                #    self.console_output.appendPlainText(text.replace('\n',''))
         else:   
             # board     
             if text.replace('\n','') == '---':
                 self.switch = False
             else:
                 self.label_Board_Output.setText(self.label_Board_Output.text() + text)
+    
+    def end_game(self, winner):
+        print('game end')
+        sys.stdout = sys.__stdout__
         
+        self.threads.join()        
+        #* BGM
+        if self.threads.winner == 0:
+            self.play_se('win')
+        elif self.threads.winner == 1:
+            self.play_se('lose')
+        elif self.threads.winner == -1:
+            self.play_se('even')
+        self.threads = None
+    
     def exit(self):
-        raise Exception()
         self._timer.stop()
         
-        #! thread
-        self.threads.join()
+        try:
+            self.client.cam.close()
+        except AttributeError as e:
+            print(e)
         
-        sys.exit(app.exec_())
+        #! thread
+        if not self.threads is None:
+            self.threads.join()
+        
+        self.close()
                 
     @pyqtSlot()
     def _queryFrame(self):

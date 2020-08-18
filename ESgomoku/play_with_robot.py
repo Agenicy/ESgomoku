@@ -4,20 +4,24 @@ from __future__ import print_function
 import sys
 sys.path.extend(['./serial', './Braccio', './camera'])
 
-from game import Board, Game
-from mcts_pure import MCTSPlayer as MCTS_Pure
-from mcts_alphaZero import MCTSPlayer
-# from policy_value_net_numpy import PolicyValueNetNumpy
-# from policy_value_net import PolicyValueNet  # Theano and Lasagne
-# from policy_value_net_pytorch import PolicyValueNet  # Pytorch
-# from policy_value_net_tensorflow import PolicyValueNet # Tensorflow
-from policy_value_net_keras import PolicyValueNet  # Keras
-from braccio_player import BraccioPlayer
+if not 'policy_value_net_keras' in sys.modules:
+    from game import Board, Game
+    from mcts_pure import MCTSPlayer as MCTS_Pure
+    from mcts_alphaZero import MCTSPlayer
+    # from policy_value_net_numpy import PolicyValueNetNumpy
+    # from policy_value_net import PolicyValueNet  # Theano and Lasagne
+    # from policy_value_net_pytorch import PolicyValueNet  # Pytorch
+    # from policy_value_net_tensorflow import PolicyValueNet # Tensorflow
+    from policy_value_net_keras import PolicyValueNet  # Keras
+    from braccio_player import BraccioPlayer
 from detect import detect
 from camera import camera
 import cv2, time
 
 import threading
+
+from pygame import mixer
+mixer.init()
 
 class Human(object):
     """
@@ -31,6 +35,8 @@ class Human(object):
         self.player = p
 
     def get_action(self, board):
+        mixer.Channel(2).play(mixer.Sound('./Resources/ROBOT_SE/ai_turn.ogg'))
+        
         try:
             location = input("Your move: ")
             if isinstance(location, str):  # for python3
@@ -50,16 +56,25 @@ class Client(object):
     """
     human player
     """
-    def __init__(self, url, debug = False, angle = 0):
-        self.player = None
-        self.cam = camera(url = url, angle = angle, debug = debug)
-        self.det = detect(self.cam, debug = debug)
-        self.cam.start()
+    def __init__(self, url, debug = False, angle = 0, init = False):
+        if init:
+            self.player = None
+            self.cam = camera(url = url, angle = angle, debug = debug)
+            self.cam.start()
+            self.det = detect(self.cam, debug = debug)
+            self.first_action = True
 
     def set_player_ind(self, p):
         self.player = p
 
     def get_action(self, board):
+        mixer.Channel(2).play(mixer.Sound('./Resources/ROBOT_SE/my_turn.ogg'))
+        if self.first_action:
+            self.first_action = False
+            from time import sleep
+            sleep(2)
+            mixer.Channel(2).play(mixer.Sound('./Resources/ROBOT_SE/lesson.ogg'))
+
         try: 
             color, loc = self.det.getLoc()
             while color != self.player:
@@ -84,10 +99,12 @@ class Client(object):
         return "Human {}".format(self.player)
 
 class Play_With_Robot(threading.Thread):
-    def __init__(self, client = Client(url = 'http://127.0.0.1:4747/mjpegfeed', debug = True), testMode = True):
+    def __init__(self, parent = None, who_first = 1, client = Client(url = 'http://127.0.0.1:4747/mjpegfeed', debug = True), testMode = False):
         super().__init__()
-        self.client = client
+        self.client = client        
         self.testMode = testMode
+        self.who_first = who_first
+        self.parent = parent
         
     def run(self):
         n = 5
@@ -125,11 +142,17 @@ class Play_With_Robot(threading.Thread):
             human = self.client
 
             # set start_player=0 for human first
-            game.start_play(human, mcts_player, start_player=1, is_shown=1)
+            winner = game.start_play(human, mcts_player, start_player=self.who_first, is_shown=1)
+            
+            print(f'[Play with Robot] winner: {winner}')
+            if self.parent != None:
+                self.parent.end_game(winner)
+            
         except KeyboardInterrupt:
             print('\n\rquit')
         cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
-    run()
+    play_With_Robot = Play_With_Robot()
+    play_With_Robot.start()

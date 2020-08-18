@@ -21,7 +21,7 @@ class detect():
         
         self.point = []
         
-        self.color_black = [80,80,80]
+        self.color_black = [110,110,110]
         self.color_white = [195,195,195]
         
         self.vis = [[0]*points]*points
@@ -32,6 +32,7 @@ class detect():
         self.conf_trigger = 5 # trigger num of confdence
         
         self.cam = camera
+        #self.cam.start()
         
         self.points = points
         self.pos = []
@@ -41,6 +42,35 @@ class detect():
 
                 # tuple
                 self.point.append((int((x+outline+0.5)*self.unit), int((y+outline+0.5)*self.unit)))
+                
+    def create(self):
+        self.imsLock = True
+        
+        im, d = self.cam.getDst()
+        
+        gray = cv2.cvtColor(d, cv2.COLOR_BGR2GRAY)
+        d = cv2.GaussianBlur(gray, (9,9),0)
+        
+        d = cv2.cvtColor(d, cv2.COLOR_GRAY2BGR)
+
+        if self.cam.isboardcorrect:
+            cv2.drawContours(im, self.cam.board_corner, -1, (0, 255, 0), 3)
+        else:
+            cv2.drawContours(im, self.cam.board_corner, -1, (0, 0, 255), 3)
+                        
+        self.ims = cv2.resize(im,(self.im_size,self.im_size))
+        ds = cv2.resize(d,(self.im_size,self.im_size))
+        
+        color = None
+        if self.cam.isboardcorrect:
+            color, loc = self.analyze(ds)
+        
+        cv2.imshow('original', self.ims)
+        
+        self.ds = ds
+        self.ds_show = deepcopy(ds) # copy for future showing
+        
+        return
     
     @jit(forceobj = True, parallel = True)    
     def getLoc(self):
@@ -222,7 +252,7 @@ class detect():
 if __name__ == "__main__":
     from camera import camera
     import cv2
-    cam = camera(url = 'http://192.168.137.236:4747/mjpegfeed', angle = 0, debug = False)
+    cam = camera(url = 'http://192.168.137.178:4747/mjpegfeed', angle = 0, debug = False)
     
     cam.start()
     det = detect(cam)
