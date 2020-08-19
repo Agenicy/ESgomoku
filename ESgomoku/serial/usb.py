@@ -172,7 +172,8 @@ class usb():
 
     def AddClient(self, port, baud, show = False, testMode = False):
         if not testMode:
-            self.client[port] = client(signal = self.singal,port=port, baud=baud, show= show) # add client
+            if len(self.client) == 0:
+                self.client[port] = client(signal = self.singal,port=port, baud=baud, show= show) # add client
         else:
             self.client[port] = Dummy(signal = self.singal,port=port, baud=baud, show= show) # add client
         print('Client added...')
@@ -183,7 +184,8 @@ class usb():
         try:
             print('Client running...')
             for c in self.client.values(): # run clients
-                c.start()
+                if not c.isAlive():
+                    c.start()
         except KeyboardInterrupt:
             self.Close()
             print('bye.')

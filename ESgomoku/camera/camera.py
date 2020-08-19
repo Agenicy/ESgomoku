@@ -4,7 +4,7 @@ import time
 import threading
 
 class camera(threading.Thread):
-    def __init__(self, url='http://127.0.0.1:4747/mjpegfeed', angle = 0, debug = False):
+    def __init__(self, url='http://127.0.0.1:4747/mjpegfeed', angle = 0, debug = False, daemon=True):
         super().__init__()
         
         self.debug = debug
@@ -70,7 +70,10 @@ class camera(threading.Thread):
             if __name__ == '__main':
                 cv2.imshow('debug ON', img)
             return img
+        
         ret, img = self.cam.read()
+        while not ret:
+            pass
         img = self.rotate(img, self.angle)
         #! camera 區域
         s = 100
@@ -180,8 +183,8 @@ class camera(threading.Thread):
 
 
     def run(self):
-        self.start_time = time.time()                    
-            
+        self.start_time = time.time()
+        
         while True:
             try:
                 img = self.getImg()
@@ -201,7 +204,7 @@ class camera(threading.Thread):
                 # 透視變形
                 dst = cv2.warpPerspective(
                     img, self.M, (self.pict_size, self.pict_size))
-
+                
                 #cv2.drawContours(img, self.board_area, -1, (255, 0, 0), 3)
                 if __name__ == '__main__':
                     try:
@@ -222,7 +225,7 @@ class camera(threading.Thread):
                     break
                 
             except Exception as e:
-                print(e)
+                print(e)  
 
     def getDst(self):
         while self.pict == []:
@@ -233,5 +236,5 @@ class camera(threading.Thread):
         
 
 if __name__ == "__main__":
-    cam = camera(url = 'http://192.168.137.178:4747/mjpegfeed', angle = 0, debug = False)
-    cam.getDst()
+    cam = camera(url = 'http://192.168.43.40:4747/mjpegfeed', angle = 0, debug = False)
+    cam.start()

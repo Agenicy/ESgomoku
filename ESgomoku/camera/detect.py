@@ -8,10 +8,12 @@ from numba import jit
 from copy import deepcopy
 
 class detect():
-    def __init__(self, camera, points=9, outline = 0.4, debug = False):
+    def __init__(self, camera, points=9, outline = 0.4, debug = False, finding_color = 2):
         super().__init__()
         self.debug = debug
-                
+        
+        self.finding_color = finding_color
+        
         self.ds = None
         self.ds_show = None
         self.imsLock = True
@@ -21,15 +23,15 @@ class detect():
         
         self.point = []
         
-        self.color_black = [110,110,110]
+        self.color_black = [80,80,80]
         self.color_white = [195,195,195]
         
-        self.vis = [[0]*points]*points
+        self.vis = np.zeros((points,points)).tolist()
         self.count = 0 # numbers of chess now
         
         self.memory = [] # board-changed that founded
         self.confidence = 0.0 # confidence of board changed
-        self.conf_trigger = 5 # trigger num of confdence
+        self.conf_trigger = 10 # trigger num of confdence
         
         self.cam = camera
         #self.cam.start()
@@ -43,7 +45,7 @@ class detect():
                 # tuple
                 self.point.append((int((x+outline+0.5)*self.unit), int((y+outline+0.5)*self.unit)))
                 
-    def create(self):
+    def create(self): # the same to getLoc, but no return / while
         self.imsLock = True
         
         im, d = self.cam.getDst()
@@ -72,20 +74,12 @@ class detect():
         
         return
     
-    @jit(forceobj = True, parallel = True)    
+    #@jit(forceobj = True, parallel = True)    
     def getLoc(self):
         while True:
             self.imsLock = True
-            
-            """
-            nowTime = time.time()
-            
-            while time.time() - nowTime < 0.1:
-                # block
-                im, d = self.cam.getDst()"""
-            
+                        
             im, d = self.cam.getDst()
-            #d = cv2.blur(d,(8, 8))
             
             gray = cv2.cvtColor(d, cv2.COLOR_BGR2GRAY)
             d = cv2.GaussianBlur(gray, (9,9),0)
@@ -107,17 +101,6 @@ class detect():
             
             cv2.imshow('original', self.ims)
             
-            """
-            for point in [(3*self.unit, 3*self.unit),
-                          (7*self.unit, 7*self.unit),
-                          (3*self.unit, 7*self.unit),
-                          (7*self.unit, 3*self.unit),
-                          (5*self.unit, 5*self.unit)]:
-                cv2.circle(ds_show, point, 8, (0, 255, 255), thickness=-1)
-            for point in self.point:
-                cv2.circle(ds_show, point, 5, (0, 0, 255), thickness=-1)
-            cv2.imshow('result', ds_show)
-            """
             self.ds = ds
             self.ds_show = deepcopy(ds) # copy for future showing
             
@@ -191,7 +174,7 @@ class detect():
                 b, w = self.isChess(color)
                 line[0].append(b)
                 line[1].append(w)
-                line[2].append(2*w+b)
+                line[2].append(2*w+b) #> b = 1; w = 2
                 
                 if not self.ds_show is None:
                     if w == 1:
@@ -220,18 +203,26 @@ class detect():
         for x in range(self.points):
             for y in range(self.points):
                 if dot[x][y] != self.vis[x][y] and self.vis[x][y] == 0:
-                    find[0] = x
-                    find[1] = y
-                    color = dot[x][y] # color is 1 or 2
-                    find_num += 1
+                    if dot[x][y] == self.finding_color:
+                        find[0] = x
+                        find[1] = y
+                        find_num += 1
+                        color = dot[x][y] # color is 1 or 2
                     
-        if find_num != 1:
-            return find, 0
-        else:
+        if find_num == 1:
             if self.memory == find:
                 if self.confidence >= self.conf_trigger:
                     # very sure
-                    self.vis = dot
+                    #self.vis = dot
+                    x, y = find[0], find[1]
+                    self.vis[x][y] = color
+                    if self.finding_color == 1:
+                        self.finding_color = 2
+                        print('debug')
+                    else:
+                        self.finding_color = 1
+                        print('mode')
+                    
                     return find, color
                 else:
                     # more sure
@@ -242,6 +233,8 @@ class detect():
                 self.memory = find
                 self.confidence = 0
                 return find, 0
+        else:
+            return find, 0
 
     def getDst(self):
         if not self.imsLock:
@@ -252,7 +245,7 @@ class detect():
 if __name__ == "__main__":
     from camera import camera
     import cv2
-    cam = camera(url = 'http://192.168.137.178:4747/mjpegfeed', angle = 0, debug = False)
+    cam = camera(url = 'http://192.168.43.40:4747/mjpegfeed', angle = 180, debug = False)
     
     cam.start()
     det = detect(cam)

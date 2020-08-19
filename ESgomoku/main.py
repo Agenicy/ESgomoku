@@ -19,7 +19,6 @@ import copy
 import play_with_robot
         
 mixer.init()
-mixer.music.set_volume(1.0)
 
 sys.path.extend(['./serial', './Braccio','./camera'])
 testMode = False
@@ -34,7 +33,7 @@ class EmittingStream(QObject):
     def write(self, text):
         self.textWritten.emit(str(text))
 
-class BGM(threading.Thread):
+class BGM():
     def __init__(self):
         super().__init__()
         pass
@@ -42,12 +41,15 @@ class BGM(threading.Thread):
     def run(self):
         mixer.Channel(0).set_volume(0.1)
         mixer.Channel(0).play(mixer.Sound('./Resources/Music/start.ogg'), -1)
+        
+    def stop(self):
+        mixer.Channel(0).stop()
 
 mixer.init()
 bgm = BGM()
 
 #TODO init here
-url = 'http://192.168.137.178:4747/mjpegfeed'
+url = 'http://192.168.43.40:4747/mjpegfeed'
 
 class PyMainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self):
@@ -71,6 +73,7 @@ class PyMainWindow(QMainWindow, Ui_MainWindow):
         self.console_old_text = []
         
         if not testMode:
+            #self.client = play_with_robot.Human()
             self.client = play_with_robot.Client(url = url, angle = 0, debug = testMode, init = True) 
             self.client.det.create()
         
@@ -81,7 +84,6 @@ class PyMainWindow(QMainWindow, Ui_MainWindow):
         print("Press NewGame...")
         
         self.actionMusic_On.setChecked(True)
-        bgm.start()
         mixer.Channel(1).play(mixer.Sound('./Resources/ROBOT_SE/ready.ogg'))
         
         self.show()
@@ -95,7 +97,7 @@ class PyMainWindow(QMainWindow, Ui_MainWindow):
         if self.actionMusic_On.isChecked():
             self.play_se('music_on')
         else:
-            self.play_se('music_off')
+            mixer.Channel(1).play(mixer.Sound('./Resources/ROBOT_SE/music_off.ogg'))
             
     def play_se(self, filename):
         if self.actionMusic_On.isChecked():
@@ -104,26 +106,61 @@ class PyMainWindow(QMainWindow, Ui_MainWindow):
     def __del__(self):
         sys.stdout = sys.__stdout__
  
-    def play(self):        
+    def play(self):      
+        print("""--Board--
+Player 1 with X
+Player 2 with O
+
+       0       1       2       3       4       5       6       7       8
+
+   8   _       _       _       _       _       _       _       _       _
+
+
+   7   _       _       _       _       _       _       _       _       _
+
+
+   6   _       _       _       _       _       _       _       _       _
+
+
+   5   _       _       _       _       _       _       _       _       _
+
+
+   4   _       _       _       _       _       _       _       _       _
+
+
+   3   _       _       _       _       _       _       _       _       _
+
+
+   2   _       _       _       _       _       _       _       _       _
+
+
+   1   _       _       _       _       _       _       _       _       _
+
+
+   0   _       _       _       _       _       _       _       _       _
+
+
+---""")  
         self.play_se('game_start')
+        bgm.run()
+        while mixer.Channel(1).get_busy():
+            pass
         global testMode
         
         if not testMode:
-                  
-            #! threading
-            # play_with_robot.run(self.client, testMode)
-            who_first = 1
-            #* BGM
-            if who_first == 1:
-                self.play_se('ai_first')
-            elif who_first == 0:
-                self.play_se('human_first')
+            
             
             self.threads = play_with_robot.Play_With_Robot(parent = self, who_first = who_first, client = self.client , testMode = testMode)
             
             
             self.threads.start()
             
+            who_first = 1
+            #* BGM
+            if who_first == 1:
+                self.play_se('ai_first')
+            elif who_first == 0:
+                self.play_se('human_first')
         else:
             self.client = play_with_robot.Human()
         
@@ -133,9 +170,8 @@ class PyMainWindow(QMainWindow, Ui_MainWindow):
                 self.switch = True
                 self.label_Board_Output.setText('')
             else:
-                self.console_output.appendPlainText(text.replace('\n',''))
-                #if text[0:8] == '[Detect]':
-                #    self.console_output.appendPlainText(text.replace('\n',''))
+                if text[0:8] == '[Detect]':
+                    self.console_output.appendPlainText(text.replace('\n',''))
         else:   
             # board     
             if text.replace('\n','') == '---':
@@ -145,17 +181,16 @@ class PyMainWindow(QMainWindow, Ui_MainWindow):
     
     def end_game(self, winner):
         print('game end')
-        sys.stdout = sys.__stdout__
         
-        self.threads.join()        
         #* BGM
-        if self.threads.winner == 0:
+        if winner == 1:
             self.play_se('win')
-        elif self.threads.winner == 1:
+        elif winner == 2:
             self.play_se('lose')
-        elif self.threads.winner == -1:
+        elif winner == -1:
             self.play_se('even')
         self.threads = None
+        bgm.stop()
     
     def exit(self):
         self._timer.stop()
@@ -173,6 +208,7 @@ class PyMainWindow(QMainWindow, Ui_MainWindow):
                 
     @pyqtSlot()
     def _queryFrame(self):
+        #return
         if not self.client is None:
             if not self.client.det.imsLock:
                 img, dst = self.client.det.getDst()

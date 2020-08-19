@@ -5,7 +5,7 @@ from solver import solver
 from time import sleep
 from math import sqrt, atan, pi
 import numpy as np
-
+from pygame import mixer
 # 常數修正項 ------------------------------------------------------
 x_offset = 140 # 棋盤第一排中點左右偏差值 (絕對值)
 block_length = 280/9 # 棋盤格子長度
@@ -334,6 +334,7 @@ class BraccioPlayer(object):
         self.mcts.update_with_move(-1)
 
     def get_action(self, board, temp=1e-2, return_prob=0):
+        mixer.Channel(2).play(mixer.Sound('./Resources/ROBOT_SE/ai_turn.ogg'))
         sensible_moves = board.availables
         # the pi vector returned by MCTS as in the alphaGo Zero paper
         move_probs = np.zeros(board.width*board.height)

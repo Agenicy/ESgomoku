@@ -35,7 +35,7 @@ class Human(object):
         self.player = p
 
     def get_action(self, board):
-        mixer.Channel(2).play(mixer.Sound('./Resources/ROBOT_SE/ai_turn.ogg'))
+        mixer.Channel(2).play(mixer.Sound('./Resources/ROBOT_SE/my_turn.ogg'))
         
         try:
             location = input("Your move: ")
@@ -69,17 +69,18 @@ class Client(object):
 
     def get_action(self, board):
         mixer.Channel(2).play(mixer.Sound('./Resources/ROBOT_SE/my_turn.ogg'))
-        if self.first_action:
-            self.first_action = False
-            from time import sleep
-            sleep(2)
-            mixer.Channel(2).play(mixer.Sound('./Resources/ROBOT_SE/lesson.ogg'))
 
         try: 
             color, loc = self.det.getLoc()
+            if self.first_action:
+                self.first_action = False
+                from time import sleep
+                sleep(2)
+                mixer.Channel(2).play(mixer.Sound('./Resources/ROBOT_SE/lesson.ogg'))
             while color != self.player:
                 print(color)
                 color, loc = self.det.getLoc()
+            
             
             print(loc)            
             location = loc
@@ -99,7 +100,7 @@ class Client(object):
         return "Human {}".format(self.player)
 
 class Play_With_Robot(threading.Thread):
-    def __init__(self, parent = None, who_first = 1, client = Client(url = 'http://127.0.0.1:4747/mjpegfeed', debug = True), testMode = False):
+    def __init__(self, parent = None, who_first = 1, client = Client(url = 'http://127.0.0.1:4747/mjpegfeed', debug = True), testMode = False, daemon=True):
         super().__init__()
         self.client = client        
         self.testMode = testMode
@@ -119,6 +120,7 @@ class Play_With_Robot(threading.Thread):
             
             best_policy = PolicyValueNet(width, height, model_file = model_file)
             mcts_player = BraccioPlayer(best_policy.policy_value_fn, c_puct=5, n_playout=400)
+            #mcts_player = MCTSPlayer(best_policy.policy_value_fn,c_puct=5,n_playout=400)
             from braccio_player import init
             init(self.testMode)
             
