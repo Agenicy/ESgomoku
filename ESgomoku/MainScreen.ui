@@ -255,19 +255,40 @@ Output here.</string>
    <widget class="QLabel" name="label_2">
     <property name="geometry">
      <rect>
-      <x>20</x>
+      <x>10</x>
       <y>10</y>
-      <width>331</width>
-      <height>51</height>
+      <width>361</width>
+      <height>101</height>
      </rect>
     </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
     <property name="text">
-     <string>ES Gomoku</string>
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap>GUI/Resources/Picture/ESGomoku3.png</pixmap>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
     </property>
     <property name="alignment">
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
+   <zorder>label_2</zorder>
+   <zorder>Frame_img</zorder>
+   <zorder>Frame_dst</zorder>
+   <zorder>label_img</zorder>
+   <zorder>label_dst</zorder>
+   <zorder>frame</zorder>
+   <zorder>label_board</zorder>
+   <zorder>frame_2</zorder>
+   <zorder>label_console</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -290,6 +311,8 @@ Output here.</string>
      <string>Option</string>
     </property>
     <addaction name="actionMusic_On"/>
+    <addaction name="actionRecatch_Board"/>
+    <addaction name="actionPlayer_First"/>
    </widget>
    <addaction name="menuSystem"/>
    <addaction name="menuOption"/>
@@ -337,6 +360,19 @@ Output here.</string>
   <action name="actionExit_2">
    <property name="text">
     <string>Exit</string>
+   </property>
+  </action>
+  <action name="actionRecatch_Board">
+   <property name="text">
+    <string>Recatch Board</string>
+   </property>
+  </action>
+  <action name="actionPlayer_First">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Player First</string>
    </property>
   </action>
  </widget>

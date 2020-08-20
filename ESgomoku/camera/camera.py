@@ -123,6 +123,9 @@ class camera(threading.Thread):
             
         return line_image
 
+    def recatch_board(self):
+        self.start_time = time.time()
+
     def resize(self, img):
         # 將圖片轉為灰階
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

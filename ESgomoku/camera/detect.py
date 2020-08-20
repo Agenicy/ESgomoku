@@ -44,7 +44,11 @@ class detect():
 
                 # tuple
                 self.point.append((int((x+outline+0.5)*self.unit), int((y+outline+0.5)*self.unit)))
-                
+    
+    def restart(self):
+        self.vis = np.zeros((9,9)).tolist()
+        
+              
     def create(self): # the same to getLoc, but no return / while
         self.imsLock = True
         
@@ -117,7 +121,8 @@ class detect():
         dotChange, color = self.getChange(dotList)
         if color != 0:
             self.count += 1
-            print(f'[Detect] Step {self.count}: { {1:"black",2:"white"}.get(color) } {dotChange}')
+            disp = dotChange
+            print(f'[Detect] Step {self.count}: { {1:"black",2:"white"}.get(color) } {disp}')
             return color, dotChange
         else:
             return None, [-1,-1]

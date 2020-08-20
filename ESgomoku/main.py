@@ -62,6 +62,9 @@ class PyMainWindow(QMainWindow, Ui_MainWindow):
         self.actionExit_2.triggered.connect(self.exit)
         self.actionNewGame_2.triggered.connect(self.play)
         self.actionMusic_On.triggered.connect(self.playMusic)
+        self.actionRecatch_Board.triggered.connect(self.recatch)
+        self.actionRecatch_Board.triggered.connect(self.recatch)
+        self.actionPlayer_First.triggered.connect(self.changeFirst)
         
         # camera
         self._timer = QTimer(self)
@@ -91,7 +94,13 @@ class PyMainWindow(QMainWindow, Ui_MainWindow):
         #重定向输出
         self.switch = False # 切換輸出板
         sys.stdout = EmittingStream(textWritten=self.normalOutputWritten)
-        
+    
+    def changeFirst(self):
+        self.client.det.finding_color = 1 if self.actionPlayer_First.isChecked() else 2
+    
+    def recatch(self):
+        if not self.client is None:
+            self.client.det.cam.recatch_board()
         
     def playMusic(self):
         if self.actionMusic_On.isChecked():
@@ -106,7 +115,9 @@ class PyMainWindow(QMainWindow, Ui_MainWindow):
     def __del__(self):
         sys.stdout = sys.__stdout__
  
-    def play(self):      
+    def play(self):
+        self.client.det.restart()
+        self.console_output.clear()
         print("""--Board--
 Player 1 with X
 Player 2 with O
@@ -149,13 +160,15 @@ Player 2 with O
         
         if not testMode:
             
+            if not self.actionPlayer_First.isChecked():
+                who_first = 1
+            else:
+                who_first = 0
             
             self.threads = play_with_robot.Play_With_Robot(parent = self, who_first = who_first, client = self.client , testMode = testMode)
             
-            
             self.threads.start()
             
-            who_first = 1
             #* BGM
             if who_first == 1:
                 self.play_se('ai_first')
