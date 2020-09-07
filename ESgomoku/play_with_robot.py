@@ -56,7 +56,7 @@ class Client(object):
     """
     human player
     """
-    def __init__(self, url, debug = False, angle = 0, init = False):
+    def __init__(self, url, debug = False, angle = 90, init = False):
         if init:
             self.player = None
             self.cam = camera(url = url, angle = angle, debug = debug)

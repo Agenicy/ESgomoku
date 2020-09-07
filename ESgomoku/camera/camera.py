@@ -88,6 +88,9 @@ class camera(threading.Thread):
         edges = cv2.Canny(blur_gray, low_threshold, high_threshold)
         #return edges
     
+        if __name__ == "__main__":
+            cv2.imshow('edges', edges)
+            
         rho = 1
         theta = np.pi/180
         threshold = 1
@@ -103,6 +106,9 @@ class camera(threading.Thread):
                 cv2.line(line_image,(x1,y1),(x2,y2),(255,0,0),1)
                 
         
+        if __name__ == "__main__":
+            cv2.imshow('line_image_pre', line_image)
+            
         rho = 1
         theta = np.pi/180
         threshold = 1
@@ -132,11 +138,14 @@ class camera(threading.Thread):
         blur_gray = cv2.GaussianBlur(
             gray, (self.kernel_size, self.kernel_size), 0)
         
+        if __name__ == "__main__":
+            cv2.imshow('blur_gray', blur_gray)
+            
         # 對比度
         blur_gray = np.uint8(np.clip((2 * blur_gray + 0), 10, 245))
         
         if __name__ == "__main__":
-            cv2.imshow('cam_gray_blur', blur_gray)
+            cv2.imshow('blur_gray_uint8', blur_gray)
             
         try:
             edges = self.detect_border(blur_gray)
@@ -239,5 +248,5 @@ class camera(threading.Thread):
         
 
 if __name__ == "__main__":
-    cam = camera(url = 'http://192.168.43.40:4747/mjpegfeed', angle = 0, debug = False)
+    cam = camera(url = 'http://192.168.43.40:4747/mjpegfeed', angle = 0, debug = True)
     cam.start()

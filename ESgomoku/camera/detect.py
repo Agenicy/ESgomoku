@@ -110,7 +110,6 @@ class detect():
             
                 
             if not color is None:
-                loc[0], loc[1] = 8-loc[0], loc[1] 
                 return color, loc
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -122,7 +121,9 @@ class detect():
         if color != 0:
             self.count += 1
             disp = dotChange
+            dotChange[0] = 8 - dotChange[0]
             print(f'[Detect] Step {self.count}: { {1:"black",2:"white"}.get(color) } {disp}')
+            # return color, dotChange
             return color, dotChange
         else:
             return None, [-1,-1]
@@ -250,7 +251,7 @@ class detect():
 if __name__ == "__main__":
     from camera import camera
     import cv2
-    cam = camera(url = 'http://192.168.43.40:4747/mjpegfeed', angle = 180, debug = False)
+    cam = camera(url = 'http://192.168.43.40:4747/mjpegfeed', angle = 0, debug = False)
     
     cam.start()
     det = detect(cam)

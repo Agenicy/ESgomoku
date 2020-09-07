@@ -48,7 +48,7 @@ class Human(object):
 def run():
     n = 5
     width, height = 9, 9
-    model_file = './current_model_9_9_5.h5'
+    model_file = './best_model_9_9_5.h5'
     try:
         board = Board(width=width, height=height, n_in_row=n)
         game = Game(board)
